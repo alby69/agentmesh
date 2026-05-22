@@ -1,11 +1,13 @@
-# Podcast Generator — TAAFT
+# Podcast Generator
 
-Pipeline automatica che trasforma le newsletter di [There's An AI For That](https://newsletter.theresanaiforthat.com/) in episodi podcast in **italiano**, pronti da ascoltare.
+Pipeline automatica che trasforma newsletter in episodi podcast in **italiano**, pronti da ascoltare.
+
+La sorgente delle news è completamente configurabile via `.env`: puoi usare qualsiasi newsletter ospitata su **Beehiiv** (o adattare lo scraper ad altre piattaforme modificando i selettori CSS).
 
 ## Architettura
 
 ```
-Newsletter (Beehiiv)
+Newsletter (sorgente configurabile)
        │
        ▼
   ┌───────────┐
@@ -54,19 +56,45 @@ playwright install firefox
 
 # Configura le chiavi API
 cp .env.example .env
-# modifica .env con le tue chiavi
+# modifica .env con le tue chiavi e la sorgente newsletter
 ```
 
 ### File `.env`
 
 ```
+# === API (obbligatorie) ===
 GEMINI_API_KEY=your_gemini_api_key_here
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM   # Rachel, cambia con una voce italiana
-GEMINI_MODEL=gemini-2.5-flash
+
+# === Sorgente newsletter (almeno NEWSLETTER_URL o ARCHIVE_URL) ===
+SOURCE_NAME=There's An AI For That
+NEWSLETTER_URL=https://newsletter.theresanaiforthat.com
+# ARCHIVE_URL=https://newsletter.theresanaiforthat.com/archive
+
+# === Selettori scraping (default Beehiiv) ===
+LOAD_MORE_SELECTOR=button:has-text('Load More'), a:has-text('Load More')
+LINK_PATTERN=/p/
+
+# === Opzionali ===
+ELEVENLABS_VOICE_ID=ErXwobaYiN019PkySvjV
+GEMINI_MODEL=gemini-3.5-flash
 MAX_EPISODE_MINUTES=60
 OUTPUT_DIR=./output
 ```
+
+### Configurazione della sorgente
+
+| Variabile | Obbligatoria | Default | Descrizione |
+|-----------|:---:|:-------:|-------------|
+| `SOURCE_NAME` | No | `newsletter` | Nome visualizzato della fonte |
+| `NEWSLETTER_URL` | No* | — | URL base della newsletter (es. `https://newsletter.tuosito.com`) |
+| `ARCHIVE_URL` | No* | `{NEWSLETTER_URL}/archive` | URL completo della pagina archive con elenco di tutti i post |
+| `LOAD_MORE_SELECTOR` | No | `button:has-text('Load More'), a:has-text('Load More')` | Selettore CSS per il pulsante di caricamento dinamico |
+| `LINK_PATTERN` | No | `/p/` | Pattern URL per filtrare i link ai singoli post |
+
+\* Almeno uno tra `NEWSLETTER_URL` e `ARCHIVE_URL` deve essere impostato. Se `ARCHIVE_URL` non è specificato, viene derivato automaticamente da `NEWSLETTER_URL` + `/archive`.
+
+> **Nota:** Lo scraper è ottimizzato per **Beehiiv**. Se usi un'altra piattaforma, modifica `LOAD_MORE_SELECTOR` e `LINK_PATTERN` per adattarti alla struttura del tuo sito.
 
 ## Utilizzo
 
@@ -91,7 +119,7 @@ python3 main.py status
 
 Il comando `fetch-all`:
 
-1. **Scarica l'archivio completo** della newsletter (con paginazione automatica "Load More")
+1. **Scarica l'archivio completo** della newsletter (con paginazione automatica tramite il selettore `LOAD_MORE_SELECTOR`)
 2. **Confronta** ogni newsletter con il file `output/.processed.json` (il tracker)
 3. **Salta** quelle già processate (rilevamento duplicati via URL)
 4. **Genera** una puntata MP3 giornaliera per ogni nuova newsletter in `output/daily/`
@@ -104,7 +132,7 @@ Il comando `fetch-all`:
 ├── src/
 │   ├── __init__.py          # Esporta classi e funzioni principali
 │   ├── config.py            # Config dataclass, validazione, .env
-│   ├── fetcher.py           # Scraping Beehiiv con Playwright
+│   ├── fetcher.py           # Scraping della newsletter con Playwright
 │   ├── translator.py        # Traduzione/riscrittura con Gemini
 │   ├── tts.py               # Text-to-Speech con ElevenLabs
 │   ├── audio.py             # Utilità audio (durata, intro/outro, merge)
@@ -131,10 +159,12 @@ Il comando `fetch-all`:
 
 ### 1. Fetcher (`src/fetcher.py`)
 
-Usa **Playwright** (Firefox headless) per navigare la pagina archive di Beehiiv, estrarre i link alle newsletter (`/p/...`) e scaricare il contenuto testuale di ciascuna, ripulendo script, stili e boilerplate.
+Usa **Playwright** (Firefox headless) per navigare la pagina archive della newsletter, estrarre i link ai singoli post e scaricare il contenuto testuale di ciascuno, ripulendo script, stili e boilerplate.
 
-- `fetch_latest_newsletter(archive_url) -> Newsletter` — ultima pubblicazione
-- `fetch_multiple_newsletters(archive_url, count) -> list[Newsletter]` — ultime N
+I selettori per trovare il pulsante "Load More" e il pattern dei link sono configurabili via `.env` (variabili `LOAD_MORE_SELECTOR` e `LINK_PATTERN`).
+
+- `fetch_latest_newsletter(archive_url, load_more_selector, link_pattern) -> Newsletter` — ultima pubblicazione
+- `fetch_multiple_newsletters(archive_url, count, load_more_selector, link_pattern) -> list[Newsletter]` — ultime N
 
 ### 2. Translator (`src/translator.py`)
 

@@ -45,7 +45,11 @@ def daily_episode(cfg: Config) -> Path:
             "[yellow]Estrazione newsletter...", total=None
         )
         newsletter = asyncio.run(
-            fetch_latest_newsletter(cfg.archive_url)
+            fetch_latest_newsletter(
+                cfg.archive_url,
+                load_more_selector=cfg.load_more_selector,
+                link_pattern=cfg.link_pattern,
+            )
         )
         progress.update(task, description="[yellow]Traduzione con Gemini...")
         script = translate_newsletter(
@@ -96,7 +100,11 @@ def weekly_episode(cfg: Config, days: int = 7) -> Path:
             f"[yellow]Estrazione ultime {days} newsletter...", total=None
         )
         newsletters = asyncio.run(
-            fetch_multiple_newsletters(cfg.archive_url, days)
+            fetch_multiple_newsletters(
+                cfg.archive_url, days,
+                load_more_selector=cfg.load_more_selector,
+                link_pattern=cfg.link_pattern,
+            )
         )
         progress.update(
             task, description="[yellow]Unione e traduzione con Gemini..."
@@ -174,7 +182,13 @@ def process_all(cfg: Config, limit: int | None = None) -> dict[str, list[Path]]:
         task = progress.add_task(
             "[yellow]Scarico tutte le newsletter dall'archivio...", total=None
         )
-        newsletters = asyncio.run(fetch_all_newsletters(cfg.archive_url))
+        newsletters = asyncio.run(
+            fetch_all_newsletters(
+                cfg.archive_url,
+                load_more_selector=cfg.load_more_selector,
+                link_pattern=cfg.link_pattern,
+            )
+        )
         if limit:
             newsletters = newsletters[:limit]
 

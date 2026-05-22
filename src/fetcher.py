@@ -31,10 +31,14 @@ def _parse_date(text: str) -> datetime:
     return datetime.now()
 
 
-async def fetch_latest_newsletter(archive_url: str) -> Newsletter:
+async def fetch_latest_newsletter(
+    archive_url: str,
+    load_more_selector: str = "button:has-text('Load More'), a:has-text('Load More')",
+    link_pattern: str = "/p/",
+) -> Newsletter:
     async with async_playwright() as p:
         browser = await p.firefox.launch(headless=True)
-        links = await _get_links_from_archive(browser, archive_url)
+        links = await _get_links_from_archive(browser, archive_url, load_more_selector, link_pattern)
         if not links:
             raise RuntimeError("Nessun post trovato nella pagina archive.")
         newsletter = await _fetch_content(browser, links[0])
@@ -70,6 +74,8 @@ async def _fetch_content(
 
 async def _get_links_from_archive(
     browser, archive_url: str,
+    load_more_selector: str = "button:has-text('Load More'), a:has-text('Load More')",
+    link_pattern: str = "/p/",
 ) -> list[dict[str, str]]:
     page = await browser.new_page()
     await page.goto(archive_url, wait_until="domcontentloaded", timeout=60000)
@@ -77,7 +83,7 @@ async def _get_links_from_archive(
     while True:
         try:
             load_more = await page.wait_for_selector(
-                "button:has-text('Load More'), a:has-text('Load More')",
+                load_more_selector,
                 timeout=3000,
             )
             await load_more.click()
@@ -85,24 +91,27 @@ async def _get_links_from_archive(
         except:
             break
 
-    links = await page.evaluate("""
-        () => {
+    links = await page.evaluate(
+        """(pattern) => {
             const anchors = document.querySelectorAll('a');
             return Array.from(anchors)
-                .filter(a => a.href && (a.href.includes('/p/')))
+                .filter(a => a.href && a.href.includes(pattern))
                 .map(a => ({href: a.href, text: a.textContent.trim()}));
-        }
-    """)
+        }""",
+        link_pattern,
+    )
     await page.close()
     return links
 
 
 async def fetch_multiple_newsletters(
-    archive_url: str, count: int = 7
+    archive_url: str, count: int = 7,
+    load_more_selector: str = "button:has-text('Load More'), a:has-text('Load More')",
+    link_pattern: str = "/p/",
 ) -> list[Newsletter]:
     async with async_playwright() as p:
         browser = await p.firefox.launch(headless=True)
-        links = await _get_links_from_archive(browser, archive_url)
+        links = await _get_links_from_archive(browser, archive_url, load_more_selector, link_pattern)
         selected = links[:count]
         newsletters = [await _fetch_content(browser, link) for link in selected]
         await browser.close()
@@ -110,10 +119,14 @@ async def fetch_multiple_newsletters(
     return newsletters
 
 
-async def fetch_all_newsletters(archive_url: str) -> list[Newsletter]:
+async def fetch_all_newsletters(
+    archive_url: str,
+    load_more_selector: str = "button:has-text('Load More'), a:has-text('Load More')",
+    link_pattern: str = "/p/",
+) -> list[Newsletter]:
     async with async_playwright() as p:
         browser = await p.firefox.launch(headless=True)
-        links = await _get_links_from_archive(browser, archive_url)
+        links = await _get_links_from_archive(browser, archive_url, load_more_selector, link_pattern)
         if not links:
             raise RuntimeError("Nessun post trovato nella pagina archive.")
         newsletters = [await _fetch_content(browser, link) for link in links]

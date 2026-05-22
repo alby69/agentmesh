@@ -31,13 +31,32 @@ class Config:
     max_episode_minutes: int = field(
         default_factory=lambda: int(os.getenv("MAX_EPISODE_MINUTES", "60"))
     )
-    newsletter_url: str = "https://newsletter.theresanaiforthat.com"
+
+    # Fonte delle news
+    source_name: str = field(
+        default_factory=lambda: os.getenv("SOURCE_NAME", "newsletter")
+    )
+    newsletter_url: str = field(
+        default_factory=lambda: os.getenv("NEWSLETTER_URL", "")
+    )
     archive_url: str = field(
+        default_factory=lambda: os.getenv("ARCHIVE_URL", "")
+    )
+
+    # Selettori per lo scraper (default Beehiiv)
+    load_more_selector: str = field(
         default_factory=lambda: os.getenv(
-            "ARCHIVE_URL",
-            "https://newsletter.theresanaiforthat.com/archive",
+            "LOAD_MORE_SELECTOR",
+            "button:has-text('Load More'), a:has-text('Load More')",
         )
     )
+    link_pattern: str = field(
+        default_factory=lambda: os.getenv("LINK_PATTERN", "/p/")
+    )
+
+    def __post_init__(self):
+        if not self.archive_url and self.newsletter_url:
+            self.archive_url = f"{self.newsletter_url}/archive"
 
     def validate(self):
         missing = []
@@ -45,6 +64,8 @@ class Config:
             missing.append("GEMINI_API_KEY")
         if not self.elevenlabs_api_key:
             missing.append("ELEVENLABS_API_KEY")
+        if not self.archive_url:
+            missing.append("NEWSLETTER_URL o ARCHIVE_URL")
         if missing:
             raise ValueError(
                 f"Missing required env vars: {', '.join(missing)}. "

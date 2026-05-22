@@ -12,7 +12,7 @@ from src.pipeline import daily_episode, weekly_episode, process_all
 
 app = typer.Typer(
     name="podcast-generator",
-    help="Genera episodi podcast dalla newsletter 'There's An AI For That'",
+    help="Genera episodi podcast da una newsletter (configurabile via .env)",
 )
 
 
