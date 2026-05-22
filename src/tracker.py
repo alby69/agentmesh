@@ -1,0 +1,53 @@
+import json
+from pathlib import Path
+from datetime import datetime
+
+PROCESSED_FILE = ".processed.json"
+
+
+class Tracker:
+    def __init__(self, output_dir: Path):
+        self.tracker_path = output_dir / PROCESSED_FILE
+        self.data = self._load()
+
+    def _load(self) -> dict:
+        if self.tracker_path.exists():
+            return json.loads(self.tracker_path.read_text())
+        return {"processed": []}
+
+    def _save(self):
+        self.tracker_path.parent.mkdir(parents=True, exist_ok=True)
+        self.tracker_path.write_text(
+            json.dumps(self.data, indent=2, ensure_ascii=False)
+        )
+
+    def is_processed(self, url: str) -> bool:
+        return any(item["url"] == url for item in self.data["processed"])
+
+    def mark_processed(
+        self, url: str, title: str, date: str, daily_file: str, script_file: str
+    ):
+        self.data["processed"].append(
+            {
+                "url": url,
+                "title": title,
+                "date": date,
+                "daily_file": daily_file,
+                "script_file": script_file,
+            }
+        )
+        self._save()
+
+    def get_by_week(self) -> dict[str, list[dict]]:
+        groups: dict[str, list[dict]] = {}
+        for item in self.data["processed"]:
+            year, week_num = self._get_iso_week(item["date"])
+            key = f"{year}-W{week_num:02d}"
+            groups.setdefault(key, []).append(item)
+        return groups
+
+    @staticmethod
+    def _get_iso_week(date_str: str) -> tuple[int, int]:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        iso = dt.isocalendar()
+        return (iso[0], iso[1])
