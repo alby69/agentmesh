@@ -12,7 +12,7 @@ from rich.progress import (
 )
 
 from src.config import Config
-from src.audio import check_duration, merge_audio_files
+from src.audio import check_duration, merge_audio_files, add_intro_outro
 from src.fetcher import (
     fetch_latest_newsletter,
     fetch_multiple_newsletters,
@@ -56,6 +56,7 @@ def daily_episode(cfg: Config) -> Path:
             cfg.gemini_api_key,
             cfg.gemini_model,
             newsletter.content,
+            use_search=cfg.use_web_search,
         )
         progress.update(task, description="[yellow]Generazione audio ElevenLabs...")
         date_str = newsletter.date.strftime("%Y-%m-%d")
@@ -69,6 +70,13 @@ def daily_episode(cfg: Config) -> Path:
             cfg.elevenlabs_voice_id,
             audio_path,
         )
+        if cfg.intro_path or cfg.outro_path:
+            add_intro_outro(
+                audio_path,
+                intro_path=cfg.intro_path,
+                outro_path=cfg.outro_path,
+                output_path=audio_path,
+            )
         _save_script(script, script_path)
         Tracker(cfg.output_dir).mark_processed(
             newsletter.url, newsletter.title, date_str,
@@ -111,7 +119,10 @@ def weekly_episode(cfg: Config, days: int = 7) -> Path:
         )
         newsletter_items = [(n.title, n.content) for n in newsletters]
         script = translate_multiple(
-            cfg.gemini_api_key, cfg.gemini_model, newsletter_items
+            cfg.gemini_api_key,
+            cfg.gemini_model,
+            newsletter_items,
+            use_search=cfg.use_web_search,
         )
         progress.update(task, description="[yellow]Generazione audio ElevenLabs...")
         today = datetime.now()
@@ -126,6 +137,13 @@ def weekly_episode(cfg: Config, days: int = 7) -> Path:
             cfg.elevenlabs_voice_id,
             audio_path,
         )
+        if cfg.intro_path or cfg.outro_path:
+            add_intro_outro(
+                audio_path,
+                intro_path=cfg.intro_path,
+                outro_path=cfg.outro_path,
+                output_path=audio_path,
+            )
         _save_script(script, script_path)
         duration, ok = check_duration(audio_path, cfg.max_episode_minutes)
         progress.update(
@@ -165,6 +183,13 @@ def _generate_weekly_compilations(
 
         console.print(f"  [cyan]Unisco {len(daily_audios)} puntate per {week_key}...[/]")
         merge_audio_files(daily_audios, weekly_audio)
+        if cfg.intro_path or cfg.outro_path:
+            add_intro_outro(
+                weekly_audio,
+                intro_path=cfg.intro_path,
+                outro_path=cfg.outro_path,
+                output_path=weekly_audio,
+            )
         weekly_paths.append(weekly_audio)
 
     return weekly_paths
@@ -214,7 +239,10 @@ def process_all(cfg: Config, limit: int | None = None) -> dict[str, list[Path]]:
                 description=f"[yellow][{i}/{len(unprocessed)}] Traduco: {short}...",
             )
             script = translate_newsletter(
-                cfg.gemini_api_key, cfg.gemini_model, nl.content
+                cfg.gemini_api_key,
+                cfg.gemini_model,
+                nl.content,
+                use_search=cfg.use_web_search,
             )
 
             date_str = nl.date.strftime("%Y-%m-%d")
@@ -240,7 +268,16 @@ def process_all(cfg: Config, limit: int | None = None) -> dict[str, list[Path]]:
                 cfg.elevenlabs_api_key, script,
                 cfg.elevenlabs_voice_id, audio_path,
             )
+            # Salviamo lo script prima di aggiungere sigle (che non fanno parte dello script)
             _save_script(script, script_path)
+
+            if cfg.intro_path or cfg.outro_path:
+                add_intro_outro(
+                    audio_path,
+                    intro_path=cfg.intro_path,
+                    outro_path=cfg.outro_path,
+                    output_path=audio_path,
+                )
             tracker.mark_processed(
                 nl.url, nl.title, date_str,
                 str(audio_path), str(script_path),

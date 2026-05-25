@@ -31,17 +31,30 @@ def _get_cfg() -> Config:
 
 
 @app.command()
-def daily():
+def daily(
+    search: bool = typer.Option(
+        None, "--search/--no-search", help="Abilita/disabilita Google Search grounding"
+    ),
+):
     """Episodio giornaliero: ultima newsletter → traduzione → audio."""
     cfg = _get_cfg()
+    if search is not None:
+        cfg.use_web_search = search
     path = daily_episode(cfg)
     rprint(f"[green]Episodio salvato in:[/] {path}")
 
 
 @app.command()
-def weekly(days: int = typer.Option(7, "--days", "-d", help="Numero giorni da aggregare")):
+def weekly(
+    days: int = typer.Option(7, "--days", "-d", help="Numero giorni da aggregare"),
+    search: bool = typer.Option(
+        None, "--search/--no-search", help="Abilita/disabilita Google Search grounding"
+    ),
+):
     """Episodio settimanale: aggrega N newsletter → traduzione → audio."""
     cfg = _get_cfg()
+    if search is not None:
+        cfg.use_web_search = search
     path = weekly_episode(cfg, days)
     rprint(f"[green]Episodio salvato in:[/] {path}")
 
@@ -51,9 +64,14 @@ def fetch_all(
     limit: int = typer.Option(
         None, "--limit", "-l", help="Limite massimo newsletter da processare"
     ),
+    search: bool = typer.Option(
+        None, "--search/--no-search", help="Abilita/disabilita Google Search grounding"
+    ),
 ):
     """Scarica TUTTE le newsletter non ancora processate, genera puntate giornaliere + compilation settimanali."""
     cfg = _get_cfg()
+    if search is not None:
+        cfg.use_web_search = search
     result = process_all(cfg, limit=limit)
     rprint(
         f"[green]Fatto:[/] {len(result['daily'])} giornaliere, "

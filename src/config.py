@@ -20,7 +20,7 @@ class Config:
     )
     elevenlabs_voice_id: str = field(
         default_factory=lambda: os.getenv(
-            "ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM"
+            "ELEVENLABS_VOICE_ID", "ErXwobaYiN019PkySvjV"
         )
     )
     output_dir: Path = field(
@@ -30,6 +30,17 @@ class Config:
     )
     max_episode_minutes: int = field(
         default_factory=lambda: int(os.getenv("MAX_EPISODE_MINUTES", "60"))
+    )
+
+    # Sigle e Web Search
+    intro_path: Path | None = field(
+        default_factory=lambda: Path(os.getenv("INTRO_PATH")) if os.getenv("INTRO_PATH") else None
+    )
+    outro_path: Path | None = field(
+        default_factory=lambda: Path(os.getenv("OUTRO_PATH")) if os.getenv("OUTRO_PATH") else None
+    )
+    use_web_search: bool = field(
+        default_factory=lambda: os.getenv("USE_WEB_SEARCH", "false").lower() == "true"
     )
 
     # Fonte delle news
