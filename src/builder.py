@@ -5,8 +5,8 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from src.models import Newsletter, Episode
 from src.config import Config
+from src.models import Newsletter, Episode
 from src.fetcher import (
     fetch_latest_newsletter as _fetch_latest,
     fetch_multiple_newsletters as _fetch_multiple,

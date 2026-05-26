@@ -13,7 +13,7 @@ from sqlmodel import Session, select
 from playwright.async_api import async_playwright
 
 from src.config import Config
-from src.fetcher import get_article_list, _fetch_content
+from src.fetcher import get_article_list, fetch_content
 from src.builder import build_daily, build_weekly
 from src.web.db import create_db_and_tables, get_session, EpisodeDB, engine
 
@@ -27,6 +27,7 @@ cfg_default = Config()
 templates = Jinja2Templates(directory="src/web/templates")
 
 generation_results = {}
+MAX_RESULTS = 100
 
 @app.on_event("startup")
 def on_startup():
@@ -51,6 +52,12 @@ async def fetch_articles(request: Request, newsletter_url: str = Form(...)):
     })
 
 async def run_generation_task(job_id: str, article_urls: List[str], newsletter_url: str):
+    # Memory limit for generation_results
+    if len(generation_results) > MAX_RESULTS:
+        # Rimozione del risultato più vecchio (approssimativo)
+        oldest = next(iter(generation_results))
+        del generation_results[oldest]
+
     cfg = Config(newsletter_url=newsletter_url)
     try:
         async with async_playwright() as p:
@@ -58,7 +65,7 @@ async def run_generation_task(job_id: str, article_urls: List[str], newsletter_u
             newsletters = []
             for url in article_urls:
                 link = {"href": url, "text": "Articolo"}
-                nl = await _fetch_content(browser, link)
+                nl = await fetch_content(browser, link)
                 newsletters.append(nl)
             await browser.close()
 

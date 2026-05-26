@@ -63,6 +63,7 @@ def translate_multiple(
         )
 
     client = genai.Client(api_key=api_key)
+    # Correggo il parametro contenuti che deve essere la stringa prompt
     response = client.models.generate_content(
         model=model,
         contents=prompt,

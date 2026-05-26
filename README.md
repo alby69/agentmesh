@@ -27,7 +27,7 @@ Newsletter (sorgente configurabile)
        │
        ▼
   ┌───────────┐
-  │  Fetcher  │  Playwright → estrae titolo + contenuto dalla pagina archive
+  │  Fetcher  │  Playwright → estrae titolo + contenuto
   └─────┬─────┘
         │
         ▼
@@ -37,7 +37,7 @@ Newsletter (sorgente configurabile)
         │
         ▼
   ┌───────────┐
-  │    TTS    │  ElevenLabs o Edge-TTS → genera audio MP3 con voce naturale
+  │    TTS    │  ElevenLabs o Edge-TTS → genera audio MP3
   └─────┬─────┘
         │
         ▼
@@ -92,7 +92,6 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 # === Sorgente newsletter (almeno NEWSLETTER_URL o ARCHIVE_URL) ===
 SOURCE_NAME=There's An AI For That
 NEWSLETTER_URL=https://newsletter.theresanaiforthat.com
-# ARCHIVE_URL=https://newsletter.theresanaiforthat.com/archive
 
 # === Selettori scraping (default Beehiiv) ===
 LOAD_MORE_SELECTOR=button:has-text('Load More'), a:has-text('Load More')
@@ -122,8 +121,6 @@ USE_WEB_SEARCH=true
 
 \* Almeno uno tra `NEWSLETTER_URL` e `ARCHIVE_URL` deve essere impostato.
 
-> **Nota:** Lo scraper è ottimizzato per **Beehiiv**. Per altre piattaforme, modifica `LOAD_MORE_SELECTOR` e `LINK_PATTERN`.
-
 ## Utilizzo CLI
 
 ```bash
@@ -132,9 +129,11 @@ python3 main.py daily
 python3 main.py daily --search            # con approfondimento Google Search
 
 # Episodio settimanale: aggrega N newsletter in una compilation
+python3 main.py weekly                    # ultime 7
 python3 main.py weekly --days 7
 
 # BACKFILL: scarica TUTTE le newsletter passate non ancora processate
+python3 main.py fetch-all
 python3 main.py fetch-all --limit 10
 
 # Verifica lo stato del tracker
@@ -177,8 +176,16 @@ docker run -p 8000:8000 --env-file .env podcast-generator
 │   ├── weekly/              # Compilation settimanali
 │   └── .processed.json      # Tracker
 ├── .env
+├── .env.example
 ├── requirements.txt
 └── README.md
+```
+
+## Automazione (cron)
+
+```cron
+# Ogni lunedì alle 8:00
+0 8 * * 1 cd /home/utente/podcast-generator && .venv/bin/python3 main.py weekly >> cron.log 2>&1
 ```
 
 ## Stack
@@ -187,7 +194,7 @@ docker run -p 8000:8000 --env-file .env podcast-generator
 |------------|-----------|-------|
 | Web UI | FastAPI + HTMX + Tailwind | Gratuito |
 | Scraping | Playwright (Firefox) | Gratuito |
-| LLM | Google Gemini 3.5 Flash | Gratuito (free tier) |
+| LLM | Google Gemini | Gratuito |
 | TTS | Edge-TTS / ElevenLabs | Gratuito / Freemium |
 | Database | SQLite + SQLModel | Gratuito |
 | Audio | pydub + FFmpeg | Gratuito |
