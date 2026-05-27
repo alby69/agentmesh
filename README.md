@@ -4,6 +4,22 @@ Pipeline automatica che trasforma newsletter in episodi podcast in **italiano**,
 
 La sorgente delle news è completamente configurabile via `.env`: puoi usare qualsiasi newsletter ospitata su **Beehiiv** (o adattare lo scraper ad altre piattaforme modificando i selettori CSS).
 
+## 🚀 Novità: Interfaccia Web
+
+Oltre alla CLI, ora puoi usare la **Web App** per selezionare visivamente gli articoli che ti interessano e generare il tuo podcast personalizzato.
+
+### Come avviare la Web App
+```bash
+# Installa le dipendenze aggiuntive
+pip install -r requirements.txt
+
+# Avvia il server
+uvicorn src.web.app:app --reload
+```
+Poi apri `http://localhost:8000` nel tuo browser.
+
+---
+
 ## Architettura
 
 ```
@@ -11,17 +27,17 @@ Newsletter (sorgente configurabile)
        │
        ▼
   ┌───────────┐
-  │  Fetcher  │  Playwright → estrae titolo + contenuto dalla pagina archive
+  │  Fetcher  │  Playwright → estrae titolo + contenuto
   └─────┬─────┘
         │
         ▼
   ┌───────────┐
-  │ Translator│  Google Gemini → traduce e riscrive in italiano come script podcast
+  │ Translator│  Google Gemini → traduce e riscrive in italiano + Web Search Grounding
   └─────┬─────┘
         │
         ▼
   ┌───────────┐
-  │    TTS    │  Edge-TTS (Microsoft) → genera audio MP3 con voci neurali italiane
+  │    TTS    │  ElevenLabs o Edge-TTS → genera audio MP3
   └─────┬─────┘
         │
         ▼
@@ -39,9 +55,11 @@ Il progetto è strutturato su tre livelli:
 ## Requisiti
 
 - Python 3.10+
+- [FFmpeg](https://ffmpeg.org/) (necessario per l'elaborazione audio)
 - [Playwright browsers](https://playwright.dev/python/docs/installation) (`playwright install firefox`)
 - Chiave API **Google Gemini** ([AI Studio](https://aistudio.google.com/)) — gratuita, generosissima
 - **Edge-TTS** non richiede chiave API (gratuito, nessun limite di token)
+- **ElevenLabs** (opzionale, richiede API KEY)
 
 ## Installazione
 
@@ -68,22 +86,27 @@ cp .env.example .env
 ```
 # === API ===
 GEMINI_API_KEY=your_gemini_api_key_here
-# TTS non richiede API key: viene usato Edge-TTS (gratuito)
+# Opzionale: se presente attiva ElevenLabs, altrimenti usa Edge-TTS gratuito
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 
 # === Sorgente newsletter (almeno NEWSLETTER_URL o ARCHIVE_URL) ===
 SOURCE_NAME=There's An AI For That
 NEWSLETTER_URL=https://newsletter.theresanaiforthat.com
-# ARCHIVE_URL=https://newsletter.theresanaiforthat.com/archive
 
 # === Selettori scraping (default Beehiiv) ===
 LOAD_MORE_SELECTOR=button:has-text('Load More'), a:has-text('Load More')
 LINK_PATTERN=/p/
 
+# === Sigle (Percorsi file MP3) ===
+INTRO_PATH=./assets/intro.mp3
+OUTRO_PATH=./assets/outro.mp3
+
 # === Opzionali ===
-TTS_VOICE=it-IT-GiuseppeNeural  # voci italiane: it-IT-GiuseppeNeural (maschile), it-IT-ElsaNeural (femminile)
+TTS_VOICE=it-IT-GiuseppeNeural  # Edge: it-IT-GiuseppeNeural, ElevenLabs: ID voce
 GEMINI_MODEL=gemini-3.5-flash
 MAX_EPISODE_MINUTES=60
 OUTPUT_DIR=./output
+USE_WEB_SEARCH=true
 ```
 
 ### Configurazione della sorgente
@@ -98,24 +121,38 @@ OUTPUT_DIR=./output
 
 \* Almeno uno tra `NEWSLETTER_URL` e `ARCHIVE_URL` deve essere impostato.
 
-> **Nota:** Lo scraper è ottimizzato per **Beehiiv**. Per altre piattaforme, modifica `LOAD_MORE_SELECTOR` e `LINK_PATTERN`.
-
-## Utilizzo
+## Utilizzo CLI
 
 ```bash
 # Episodio giornaliero: ultima newsletter → traduzione → audio
 python3 main.py daily
+python3 main.py daily --search            # con approfondimento Google Search
 
 # Episodio settimanale: aggrega N newsletter in una compilation
 python3 main.py weekly                    # ultime 7
-python3 main.py weekly --days 14          # personalizza
+python3 main.py weekly --days 7
 
 # BACKFILL: scarica TUTTE le newsletter passate non ancora processate
 python3 main.py fetch-all
-python3 main.py fetch-all --limit 10      # prime 10 nuove
+python3 main.py fetch-all --limit 10
 
 # Verifica lo stato del tracker
 python3 main.py status
+```
+
+## Funzionalità Avanzate
+
+### 🔍 Web Search Grounding
+Usa il flag `--search` (o imposta `USE_WEB_SEARCH=true` nel `.env`) per permettere a Gemini di usare Google Search per approfondire le notizie della newsletter con dati tecnici e curiosità aggiornate.
+
+### 🎵 Sigle Intro/Outro
+Puoi aggiungere automaticamente una sigla iniziale e finale ai tuoi episodi impostando `INTRO_PATH` e `OUTRO_PATH` nel tuo file `.env`.
+
+### 🐳 Docker
+Il progetto include un `Dockerfile` pronto per il deploy containerizzato:
+```bash
+docker build -t podcast-generator .
+docker run -p 8000:8000 --env-file .env podcast-generator
 ```
 
 ## Struttura del progetto
@@ -128,71 +165,21 @@ python3 main.py status
 │   ├── models.py            # Dataclass condivisi (Newsletter, Episode)
 │   ├── fetcher.py           # Scraping della newsletter con Playwright
 │   ├── translator.py        # Traduzione/riscrittura con Gemini
-│   ├── tts.py               # Text-to-Speech con Edge-TTS (Microsoft)
+│   ├── tts.py               # Text-to-Speech (Edge-TTS o ElevenLabs)
 │   ├── audio.py             # Utilità audio (durata, intro/outro, merge)
 │   ├── tracker.py           # Tracker JSON per evitare duplicati
 │   ├── builder.py           # Async orchestration layer (no CLI deps)
-│   └── pipeline.py          # Thin wrapper CLI con Rich progress bar
+│   ├── pipeline.py          # Thin wrapper CLI con Rich progress bar
+│   └── web/                 # Web App (FastAPI + HTMX + Tailwind)
 ├── output/
 │   ├── daily/               # Puntate giornaliere (MP3 + script TXT)
-│   │   ├── 2026-01-15_titolo.mp3
-│   │   └── ...
 │   ├── weekly/              # Compilation settimanali
-│   │   ├── 2026-W03.mp3
-│   │   └── ...
-│   └── .processed.json      # Tracker (non modificare manualmente)
+│   └── .processed.json      # Tracker
 ├── .env
 ├── .env.example
 ├── requirements.txt
 └── README.md
 ```
-
-## Dettaglio moduli
-
-### `src/models.py`
-Dataclass condivise (`Newsletter`, `Episode`) usate da tutti i moduli.
-
-### `src/fetcher.py`
-Usa **Playwright** (Firefox headless) per navigare la pagina archive, estrarre link e contenuto testuale.
-
-### `src/translator.py`
-Invia il testo a **Google Gemini** con system prompt per riscrittura in stile podcast italiano.
-
-### `src/tts.py`
-Usa **Edge-TTS** (voci neurali Microsoft, gratuite, nessun limite). Voci italiane: `it-IT-GiuseppeNeural` (maschile), `it-IT-ElsaNeural` (femminile).
-
-### `src/builder.py`
-Layer async che combina i servizi in operazioni complete. **Senza dipendenze CLI/Typer/Rich** — utilizzabile direttamente da una web app:
-
-```python
-from src.config import Config
-from src.builder import fetch_and_build_latest
-
-cfg = Config()
-episode = await fetch_and_build_latest(cfg)
-print(episode.audio_path)  # → output/daily/2026-01-15_titolo.mp3
-```
-
-### `src/pipeline.py`
-Thin orchestrator CLI: aggiunge progress bar Rich attorno alle funzioni del builder. Tutte le funzioni sono async.
-
-### `src/tracker.py`
-Persiste lo stato di elaborazione in `output/.processed.json` per evitare duplicati.
-
-## Voci Edge-TTS
-
-| Voce | Gender | Qualità |
-|------|--------|---------|
-| `it-IT-GiuseppeNeural` (default) | Maschile | Eccellente per news/podcast |
-| `it-IT-ElsaNeural` | Femminile | Naturale e fluida |
-
-## Modelli Gemini
-
-| Modello | Costo |
-|---------|-------|
-| `gemini-3.5-flash` (default) | Gratuito (free tier) |
-| `gemini-3.1-flash-lite` | Gratuito |
-| `gemini-2.5-flash` | Gratuito |
 
 ## Automazione (cron)
 
@@ -205,8 +192,10 @@ Persiste lo stato di elaborazione in `output/.processed.json` per evitare duplic
 
 | Componente | Tecnologia | Costo |
 |------------|-----------|-------|
+| Web UI | FastAPI + HTMX + Tailwind | Gratuito |
 | Scraping | Playwright (Firefox) | Gratuito |
 | LLM | Google Gemini | Gratuito |
-| TTS | Edge-TTS (Microsoft) | Gratuito, nessun limite |
+| TTS | Edge-TTS / ElevenLabs | Gratuito / Freemium |
+| Database | SQLite + SQLModel | Gratuito |
 | Audio | pydub + FFmpeg | Gratuito |
 | CLI | Typer + Rich | Gratuito |
