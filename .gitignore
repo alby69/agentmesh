@@ -1,38 +1,9 @@
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
-env/
-.venv/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Risultati pipeline
+.env
 output/
 *.mp3
 *.wav
-
-# Variabili d'ambiente
-.env
-
-# Database locale
+.venv/
 podcast.db
-
-# File di log
-*.log
+web_output.log

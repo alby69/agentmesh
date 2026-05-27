@@ -1,6 +1,5 @@
 """Thin async orchestrator: wraps builder with Rich progress reporting."""
 
-import asyncio
 from pathlib import Path
 
 from rich.console import Console
@@ -22,6 +21,7 @@ _PROGRESS = Progress(
     console=console,
 )
 
+
 async def daily_episode(cfg: Config) -> Path:
     with _PROGRESS as progress:
         task = progress.add_task("[yellow]Estrazione newsletter...", total=None)
@@ -33,6 +33,7 @@ async def daily_episode(cfg: Config) -> Path:
     _warn_duration(cfg, episode)
     return episode.audio_path
 
+
 async def weekly_episode(cfg: Config, days: int = 7) -> Path:
     with _PROGRESS as progress:
         task = progress.add_task(f"[yellow]Estrazione ultime {days} newsletter...", total=None)
@@ -43,6 +44,7 @@ async def weekly_episode(cfg: Config, days: int = 7) -> Path:
     console.print(f"[bold]Durata:[/] {episode.duration_minutes:.1f} minuti")
     _warn_duration(cfg, episode)
     return episode.audio_path
+
 
 async def process_all(cfg: Config, limit: int | None = None) -> dict:
     with _PROGRESS as progress:
@@ -67,6 +69,7 @@ async def process_all(cfg: Config, limit: int | None = None) -> dict:
     console.print(f"\n[bold green]Puntate giornaliere create:[/] {len(result['daily'])}")
     console.print(f"[bold green]Compilation settimanali create:[/] {len(result['weekly'])}")
     return {"daily": result["daily"], "weekly": result["weekly"]}
+
 
 def _warn_duration(cfg: Config, episode) -> None:
     if episode.duration_minutes and episode.duration_minutes > cfg.max_episode_minutes:
