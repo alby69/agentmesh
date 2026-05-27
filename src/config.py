@@ -15,9 +15,6 @@ class Config:
     gemini_model: str = field(
         default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     )
-    elevenlabs_api_key: str | None = field(
-        default_factory=lambda: os.getenv("ELEVENLABS_API_KEY")
-    )
     tts_voice: str = field(
         default_factory=lambda: os.getenv(
             "TTS_VOICE", "it-IT-GiuseppeNeural"
