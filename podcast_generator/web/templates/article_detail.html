@@ -1,8 +1,8 @@
-<div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+<div id="articles-section" class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200" hx-history="false">
     <div class="flex items-center gap-3 mb-6">
         <button hx-get="/articles"
-                hx-target="#articles-container"
-                hx-swap="innerHTML"
+                hx-target="#articles-section"
+                hx-swap="outerHTML"
                 class="text-slate-500 hover:text-slate-700 transition flex items-center gap-1.5 text-sm font-medium">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -51,18 +51,27 @@
             <button type="button"
                     hx-post="/generate"
                     hx-vals='{"article_urls":[{{ url|tojson }}],"newsletter_url":{{ newsletter_url|tojson }}}'
-                    hx-target="#status-container"
+                    hx-target="#article-status-container"
                     hx-indicator="#gen-loading"
                     class="flex-1 bg-primary text-white px-8 py-3 rounded-xl font-black hover:bg-primary-dark active:scale-95 transition shadow-lg hover:shadow-blue-200 uppercase tracking-wider text-center">
                 Genera Podcast
             </button>
-            <a href="{{ url }}" target="_blank"
+            {% if original_url and not original_url.startswith("email://") %}
+            <a href="{{ original_url }}" target="_blank"
                class="flex-1 inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-medium text-primary bg-primary/5 hover:bg-primary/10 transition border border-primary/20">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                 </svg>
                 Apri articolo originale
             </a>
+            {% endif %}
+        </div>
+        <div id="article-status-container" class="mt-4"></div>
+        <div id="gen-loading" class="htmx-indicator">
+            <svg class="animate-spin h-8 w-8 text-primary mx-auto mt-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+            </svg>
         </div>
     </div>
 </div>

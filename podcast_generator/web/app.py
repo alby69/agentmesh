@@ -2,20 +2,21 @@ from __future__ import annotations
 
 import asyncio
 import math
+import re
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request, Form, Query, BackgroundTasks, Depends, HTTPException
+from fastapi import FastAPI, Request, Form, Query, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from podcast_generator.config import Settings
 from podcast_generator.models import ArticleSummary, GenerationJob, JobStatus
 from podcast_generator.builder import PodcastGenerator
-from podcast_generator.fetcher import get_article_list, fetch_article_html, get_rss_articles, get_email_articles
+from podcast_generator.fetcher import get_article_list, fetch_article_html, get_rss_articles, get_email_articles, fetch_email_content, list_imap_folders
 from podcast_generator.web.db import init_db, add_episode, get_episodes
 from podcast_generator.web.auth import verify_web_password, verify_api_token
 
@@ -24,8 +25,12 @@ templates = Jinja2Templates(
 )
 
 _generation_jobs: dict[str, GenerationJob] = {}
-_article_cache: dict[str, list[ArticleSummary] | str] = {"articles": [], "newsletter_url": ""}
+_article_cache: dict = {
+    "articles": [], "newsletter_url": "",
+    "email_total": 0, "email_offset": 0, "email_limit": 100,
+}
 _article_html_cache: dict[str, str] = {}
+_article_original_urls: dict[str, str] = {}
 _cfg = Settings()
 
 
@@ -56,6 +61,77 @@ async def index(request: Request, _=Depends(verify_web_password)):
     )
 
 
+@app.post("/imap-folders", response_class=JSONResponse)
+async def imap_folders(_=Depends(verify_web_password)):
+    if not _cfg.imap_host or not _cfg.imap_user or not _cfg.imap_password:
+        return JSONResponse(
+            {"error": "Configura prima Host, Email e Password nelle impostazioni"},
+            status_code=400,
+        )
+    try:
+        folders = await list_imap_folders(
+            _cfg.imap_host, _cfg.imap_user, _cfg.imap_password
+        )
+        return {"folders": folders}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/imap-debug", response_class=JSONResponse)
+async def imap_debug(_=Depends(verify_web_password)):
+    if not _cfg.imap_host or not _cfg.imap_user or not _cfg.imap_password:
+        return JSONResponse({"error": "Configura prima le credenziali"}, status_code=400)
+    try:
+        from imap_tools import MailBox
+        import imaplib
+
+        results = {}
+        with MailBox(_cfg.imap_host).login(_cfg.imap_user, _cfg.imap_password) as mb:
+            # Test 1: count total and sample labels in All Mail using search()
+            mb.folder.set("[Gmail]/Tutti i messaggi")
+            _, data = mb.client.search(None, "ALL")
+            seqs = (data[0] or b"").split()
+            results["total_all_mail"] = len(seqs)
+
+            # Fetch X-GM-LABELS for last 3 messages (checking format)
+            sample_labels = {}
+            for seq in seqs[-3:]:
+                try:
+                    typ, ld = mb.client.fetch(seq, "(X-GM-LABELS UID)")
+                    sample_labels[seq.decode()] = str(ld)
+                except Exception as e:
+                    sample_labels[seq.decode()] = f"error: {e}"
+            results["sample_labels"] = sample_labels
+
+            # Test 2: search with X-GM-LABELS using regular search()
+            for label in ["Forum", "CATEGORY_FORUM", "Categoria/Forum", "^FORUM"]:
+                try:
+                    _, data = mb.client.search(None, "X-GM-LABELS", label)
+                    results[f"labels_{label}"] = len((data[0] or b"").split())
+                except Exception as e:
+                    results[f"labels_{label}"] = f"error: {e}"
+
+            # Test 3: messages in Speciali folder
+            try:
+                mb.folder.set("[Gmail]/Speciali")
+                _, data = mb.client.search(None, "ALL")
+                results["speciali_count"] = len((data[0] or b"").split())
+                # Fetch labels of last message in Speciali
+                seqs = (data[0] or b"").split()
+                if seqs:
+                    typ, ld = mb.client.fetch(seqs[-1], "(X-GM-LABELS)")
+                    results["speciali_labels"] = str(ld)
+            except Exception as e:
+                results["speciali_count"] = f"error: {e}"
+
+            # Test 4: verify current folder name
+            results["current_folder"] = mb.folder.get()
+
+        return results
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
 @app.post("/fetch-articles", response_class=HTMLResponse)
 async def fetch_articles(
     request: Request,
@@ -65,13 +141,18 @@ async def fetch_articles(
 ):
     try:
         if source_type == "email":
-            articles = await get_email_articles(
-                _cfg.imap_host, _cfg.imap_user, _cfg.imap_password, _cfg.imap_folder
+            articles, total = await get_email_articles(
+                _cfg.imap_host, _cfg.imap_user, _cfg.imap_password,
+                _cfg.imap_folder, limit=_cfg.imap_max_emails,
             )
-            _article_cache["newsletter_url"] = "Email Inbox"
+            _article_cache["newsletter_url"] = _cfg.imap_folder or "Email Inbox"
+            _article_cache["email_total"] = total
+            _article_cache["email_offset"] = _cfg.imap_max_emails
+            _article_cache["email_limit"] = _cfg.imap_max_emails
         elif newsletter_url and (newsletter_url.endswith(".xml") or "/feed" in newsletter_url or "rss" in newsletter_url):
             articles = await get_rss_articles(newsletter_url)
             _article_cache["newsletter_url"] = newsletter_url
+            _article_cache["email_total"] = 0
         else:
             archive = (
                 f"{newsletter_url}/archive"
@@ -85,6 +166,7 @@ async def fetch_articles(
                 max_articles=_cfg.max_articles,
             )
             _article_cache["newsletter_url"] = newsletter_url or _cfg.newsletter_url
+            _article_cache["email_total"] = 0
 
         _article_cache["articles"] = articles
     except Exception as e:
@@ -97,6 +179,35 @@ async def fetch_articles(
         )
 
     return await _render_articles(request, page=1)
+
+
+@app.post("/fetch-more-emails", response_class=HTMLResponse)
+async def fetch_more_emails(
+    request: Request,
+    _=Depends(verify_web_password),
+):
+    offset = _article_cache.get("email_offset", 100)
+    limit = _article_cache.get("email_limit", 100)
+    total = _article_cache.get("email_total", 0)
+
+    if offset >= total:
+        return HTMLResponse("")
+
+    try:
+        articles, _ = await get_email_articles(
+            _cfg.imap_host, _cfg.imap_user, _cfg.imap_password,
+            _cfg.imap_folder, offset=offset, limit=limit,
+        )
+        existing = _article_cache.get("articles", [])
+        if isinstance(existing, list):
+            _article_cache["articles"] = existing + articles
+        _article_cache["email_offset"] = offset + limit
+
+        return await _render_articles(request, page=1)
+    except Exception as e:
+        return HTMLResponse(
+            f"<div class='text-red-500'>Errore: {e}</div>"
+        )
 
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -115,6 +226,7 @@ async def save_settings(
     imap_user: str = Form(...),
     imap_password: str = Form(...),
     imap_folder: str = Form(...),
+    imap_max_emails: int = Form(100),
     _=Depends(verify_web_password),
 ):
     _cfg.ui_primary_color = ui_primary_color
@@ -123,6 +235,7 @@ async def save_settings(
     _cfg.imap_user = imap_user
     _cfg.imap_password = imap_password
     _cfg.imap_folder = imap_folder
+    _cfg.imap_max_emails = imap_max_emails
 
     # In a real app, we'd save to .env or a DB. For now, it's in-memory for the session.
     return RedirectResponse(url="/settings", status_code=303)
@@ -136,7 +249,9 @@ async def _render_articles(
 ):
     articles = _article_cache.get("articles", [])
     newsletter_url = _article_cache.get("newsletter_url", "")
-    total = len(articles)
+    email_total = _article_cache.get("email_total", 0)
+    email_offset = _article_cache.get("email_offset", 0)
+    total = email_total if email_total > len(articles) else len(articles)
     total_pages = max(1, math.ceil(total / per_page))
     page = max(1, min(page, total_pages))
     start = (page - 1) * per_page
@@ -154,6 +269,8 @@ async def _render_articles(
             "total_pages": total_pages,
             "partial": partial,
             "config": _cfg,
+            "email_total": email_total,
+            "email_offset": email_offset,
         },
     )
 
@@ -164,7 +281,7 @@ async def get_articles(
     page: int = Query(1),
     _=Depends(verify_web_password),
 ):
-    return await _render_articles(request, page=page, partial=True)
+    return await _render_articles(request, page=page, partial=False)
 
 
 @ app.post("/article", response_class=HTMLResponse)
@@ -178,11 +295,40 @@ async def article_detail(
     description: str = Form(default=""),
     _=Depends(verify_web_password),
 ):
-    if url not in _article_html_cache:
+    original_url = ""
+    if url.startswith("email://"):
+        uid = url[len("email://"):]
         try:
-            _article_html_cache[url] = await fetch_article_html(url)
+            newsletter = await fetch_email_content(
+                _cfg.imap_host, _cfg.imap_user, _cfg.imap_password,
+                uid, _cfg.imap_folder, raw_html=True,
+            )
+            _article_html_cache[url] = newsletter.content
+            # Extract first meaningful link from email content
+            for href in re.findall(r'href="(https?://[^"]+)"', newsletter.content):
+                if not any(s in href for s in ("google.com/", "facebook.com/", "twitter.com/", "unsubscribe", "click=", "utm_", "track")):
+                    original_url = href
+                    break
+            if not original_url:
+                m = re.search(r"https?://[^\s<>\"']+", newsletter.content)
+                if m:
+                    original_url = m.group(0)
+            title = newsletter.title or title
+            date = str(newsletter.date) if newsletter.date else date
         except Exception:
-            pass
+            if url not in _article_html_cache:
+                try:
+                    _article_html_cache[url] = await fetch_article_html(url)
+                except Exception:
+                    pass
+    else:
+        if url not in _article_html_cache:
+            try:
+                _article_html_cache[url] = await fetch_article_html(url)
+            except Exception:
+                pass
+
+    _article_original_urls[url] = original_url
 
     return templates.TemplateResponse(
         request,
@@ -194,6 +340,7 @@ async def article_detail(
             "duration": duration,
             "description": description,
             "content_html": _article_html_cache.get(url, ""),
+            "original_url": original_url,
             "newsletter_url": newsletter_url,
         },
     )
@@ -208,7 +355,7 @@ def _lookup_titles(urls: list[str]) -> list[str]:
 
 async def _run_generation(job_id: str, article_urls: list[str]):
     try:
-        gen = PodcastGenerator()
+        gen = PodcastGenerator(config=_cfg)
         titles = _lookup_titles(article_urls)
         episode = await gen.build_from_urls(article_urls, titles=titles)
 
@@ -240,7 +387,6 @@ async def _run_generation(job_id: str, article_urls: list[str]):
 
 @app.post("/generate", response_class=HTMLResponse)
 async def generate(
-    background_tasks: BackgroundTasks,
     request: Request,
     _=Depends(verify_web_password),
 ):
@@ -265,7 +411,7 @@ async def generate(
     _generation_jobs[job_id] = GenerationJob(
         job_id=job_id, status=JobStatus.PROCESSING
     )
-    background_tasks.add_task(_run_generation, job_id, article_urls)
+    asyncio.create_task(_run_generation(job_id, article_urls))
 
     return HTMLResponse(
         content=f"""

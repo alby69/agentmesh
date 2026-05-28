@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import email
 import re
 from datetime import datetime
+from email.header import decode_header
 from typing import Optional
 
 import feedparser
@@ -11,6 +13,17 @@ from playwright.async_api import async_playwright
 
 from podcast_generator.exceptions import FetchError
 from podcast_generator.models import Newsletter, ArticleSummary
+
+def _decode_mime_header(value: str) -> str:
+    parts = decode_header(value)
+    result = []
+    for part, charset in parts:
+        if isinstance(part, bytes):
+            result.append(part.decode(charset or "utf-8", errors="replace"))
+        else:
+            result.append(part)
+    return " ".join(result).replace("\n", " ").replace("\r", "")
+
 
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -383,43 +396,228 @@ async def get_rss_articles(rss_url: str) -> list[ArticleSummary]:
     return articles
 
 
+async def list_imap_folders(
+    imap_host: str, imap_user: str, imap_password: str
+) -> list[str]:
+    try:
+        with MailBox(imap_host).login(imap_user, imap_password) as mailbox:
+            return [f.name for f in mailbox.folder.list()]
+    except Exception as e:
+        raise FetchError(f"IMAP error listing folders: {e}") from e
+
+
 async def get_email_articles(
-    imap_host: str, imap_user: str, imap_password: str, folder: str = "INBOX"
-) -> list[ArticleSummary]:
+    imap_host: str, imap_user: str, imap_password: str,
+    folder: str = "INBOX", offset: int = 0, limit: int = 100,
+) -> tuple[list[ArticleSummary], int]:
     if not imap_host or not imap_user or not imap_password:
-        return []
+        return [], 0
 
     articles = []
+    total = 0
     try:
-        with MailBox(imap_host).login(imap_user, imap_password, folder) as mailbox:
-            for msg in mailbox.fetch(limit=10, reverse=True):
-                # We use a special URN for emails so the builder knows how to fetch them
-                # format: email://{uid}
+        mailbox = MailBox(imap_host)
+        mailbox.login(imap_user, imap_password)
+        client = mailbox.client
+
+        is_gmail = "gmail" in imap_host.lower()
+        all_seqs: list[bytes] = []
+
+        if is_gmail and folder != "INBOX":
+            mailbox.folder.set("[Gmail]/Tutti i messaggi")
+            try:
+                _, data = client.search(None, "X-GM-LABELS", folder)
+                all_seqs = (data[0] or b"").split()
+            except Exception:
+                pass
+
+        if not all_seqs:
+            try:
+                mailbox.folder.set(folder)
+            except Exception:
+                mailbox.folder.set("INBOX")
+            _, data = client.search(None, "ALL")
+            all_seqs = (data[0] or b"").split()
+
+        total = len(all_seqs)
+        if offset > 0:
+            batch = all_seqs[-(offset + limit):-offset]
+        else:
+            batch = all_seqs[-limit:]
+        batch = batch[::-1]  # newest first
+
+        for seq in batch:
+            try:
+                _, fdata = client.fetch(seq, "(UID RFC822.HEADER)")
+                uid = None
+                headers = b""
+                for piece in fdata:
+                    if isinstance(piece, tuple):
+                        m = re.search(rb"UID (\d+)", piece[0])
+                        if m:
+                            uid = int(m.group(1))
+                        headers = piece[1]
+                    elif isinstance(piece, bytes):
+                        headers += piece
+                if uid is None:
+                    continue
+                msg = email.message_from_bytes(headers)
+                subject = _decode_mime_header(msg.get("Subject", "(senza oggetto)"))
+                date_str = msg.get("Date", "")
                 articles.append(ArticleSummary(
-                    href=f"email://{msg.uid}",
-                    text=msg.subject,
-                    description=msg.text[:200] if msg.text else "",
-                    date=msg.date.strftime("%Y-%m-%d %H:%M:%S"),
+                    href=f"email://{uid}",
+                    text=subject,
+                    date=date_str,
                 ))
+            except Exception:
+                continue
+
+        mailbox.logout()
     except Exception as e:
         raise FetchError(f"IMAP error: {e}") from e
-    return articles
+    return articles, total
 
 
 async def fetch_email_content(
-    imap_host: str, imap_user: str, imap_password: str, uid: str, folder: str = "INBOX"
+    imap_host: str, imap_user: str, imap_password: str, uid: str, folder: str = "INBOX",
+    raw_html: bool = False,
 ) -> Newsletter:
     try:
-        with MailBox(imap_host).login(imap_user, imap_password, folder) as mailbox:
-            for msg in mailbox.fetch(AND(uid=uid)):
-                html = msg.html or ""
-                content = trafilatura.extract(html) or msg.text or ""
-                return Newsletter(
-                    title=msg.subject,
-                    url=f"email://{msg.uid}",
-                    date=msg.date,
-                    content=content,
-                )
+        mailbox = MailBox(imap_host)
+        mailbox.login(imap_user, imap_password)
+        client = mailbox.client
+
+        is_gmail = "gmail" in imap_host.lower()
+        uid_int = int(uid)
+        uid_bytes = str(uid_int).encode()
+
+        def _build_newsletter(subject: str, html_body: str, text_body: str, date_val) -> Newsletter:
+            if raw_html and html_body:
+                content = html_body
+            elif html_body:
+                content = trafilatura.extract(html_body) or text_body
+            else:
+                content = text_body
+            return Newsletter(
+                title=subject,
+                url=f"email://{uid}",
+                date=date_val,
+                content=content or "",
+            )
+
+        def _fetch_raw_email(folder_name: str) -> Newsletter | None:
+            """Try to fetch the email UID from a specific folder."""
+            try:
+                mailbox.folder.set(folder_name)
+            except Exception:
+                return None
+            for msg in mailbox.fetch(AND(uid=str(uid_int))):
+                return _build_newsletter(msg.subject, msg.html or "", msg.text or "", msg.date)
+            return None
+
+        def _fetch_raw_email_imap(folder_name: str) -> Newsletter | None:
+            """Fetch UID from folder using low-level IMAP."""
+            try:
+                mailbox.folder.set(folder_name)
+            except Exception:
+                return None
+            try:
+                _, data = client.search(None, "ALL")
+                for seq in (data[0] or b"").split():
+                    _, fdata = client.fetch(seq, "(UID RFC822)")
+                    for piece in fdata:
+                        if isinstance(piece, tuple):
+                            m = re.search(rb"UID (\d+)", piece[0])
+                            if m and int(m.group(1)) == uid_int:
+                                msg = email.message_from_bytes(piece[1])
+                                html = ""
+                                text = ""
+                                if msg.is_multipart():
+                                    for part in msg.walk():
+                                        ctype = part.get_content_type()
+                                        if ctype == "text/html":
+                                            html = part.get_payload(decode=True).decode("utf-8", errors="replace")
+                                        elif ctype == "text/plain" and not text:
+                                            text = part.get_payload(decode=True).decode("utf-8", errors="replace")
+                                else:
+                                    ctype = msg.get_content_type()
+                                    payload = msg.get_payload(decode=True)
+                                    if payload:
+                                        decoded = payload.decode("utf-8", errors="replace")
+                                        if ctype == "text/html":
+                                            html = decoded
+                                        else:
+                                            text = decoded
+                                return _build_newsletter(
+                                    msg.get("Subject", ""), html, text, msg.get("Date", "")
+                                )
+            except Exception:
+                pass
+            return None
+
+        # Try different strategies in order
+        result = None
+
+        if is_gmail:
+            # Strategy 1: X-GM-LABELS search (for labels)
+            if folder != "INBOX":
+                mailbox.folder.set("[Gmail]/Tutti i messaggi")
+                try:
+                    _, data = client.search(None, "X-GM-LABELS", folder)
+                    for seq in (data[0] or b"").split():
+                        _, fdata = client.fetch(seq, "(UID RFC822)")
+                        for piece in fdata:
+                            if isinstance(piece, tuple):
+                                m = re.search(rb"UID (\d+)", piece[0])
+                                if m and int(m.group(1)) == uid_int:
+                                    msg = email.message_from_bytes(piece[1])
+                                    html = ""
+                                    text = ""
+                                    if msg.is_multipart():
+                                        for part in msg.walk():
+                                            ctype = part.get_content_type()
+                                            if ctype == "text/html":
+                                                html = part.get_payload(decode=True).decode("utf-8", errors="replace")
+                                            elif ctype == "text/plain" and not text:
+                                                text = part.get_payload(decode=True).decode("utf-8", errors="replace")
+                                    else:
+                                        ctype = msg.get_content_type()
+                                        payload = msg.get_payload(decode=True)
+                                        if payload:
+                                            decoded = payload.decode("utf-8", errors="replace")
+                                            if ctype == "text/html":
+                                                html = decoded
+                                            else:
+                                                text = decoded
+                                    result = _build_newsletter(
+                                        msg.get("Subject", ""), html, text, msg.get("Date", "")
+                                    )
+                                    break
+                except Exception:
+                    pass
+
+            # Strategy 2: Search All Mail by UID directly
+            if result is None:
+                result = _fetch_raw_email("[Gmail]/Tutti i messaggi")
+
+            # Strategy 3: Search by folder name (if it's a real IMAP folder)
+            if result is None and folder != "INBOX":
+                result = _fetch_raw_email(folder)
+
+        # Strategy 4: Try INBOX
+        if result is None:
+            result = _fetch_raw_email("INBOX")
+
+        # Strategy 5: Last resort - scan all folders
+        if result is None and is_gmail:
+            for folder_name in ("[Gmail]/Tutti i messaggi", "[Gmail]/Speciali", "INBOX"):
+                result = _fetch_raw_email_imap(folder_name)
+                if result:
+                    break
+
+        mailbox.logout()
+        if result:
+            return result
     except Exception as e:
         raise FetchError(f"IMAP error fetching UID {uid}: {e}") from e
     raise FetchError(f"Email with UID {uid} not found")

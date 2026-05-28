@@ -24,16 +24,37 @@ Trasformare il progetto in una **libreria Python installabile** con API pulita, 
 - **Web UI** protetta da password
 - **RSS feed** per podcast player
 
+**Nuove sorgenti**
+- Supporto **RSS feed** come input (feedparser)
+- Supporto **Email IMAP** (Gmail con App Password)
+  - `list_imap_folders()` per esplorare label/folder
+  - X-GM-LABELS per etichette Gmail personalizzate
+  - 5 strategie di fallback per risoluzione UID
+  - Decodifica RFC 2047 per soggetti email
+  - Paginazione con offset/limit (max 1000 email)
+
+**Web App**
+- Pagina **Impostazioni** (`/settings`) per configurare IMAP, colori UI
+- **Vista dettaglio articolo** (`/article`) con contenuto HTML
+- **Carica più email** (`/fetch-more-emails`) per batch IMAP successivi
+- Debug IMAP (`/imap-debug`, `/imap-folders`)
+- Campo `imap_max_emails` configurabile (validato 1-1000)
+- Background task con `asyncio.create_task` invece di `BackgroundTasks`
+
 **Bug fix**
 - `get_article_list` passava `browser` invece di `context` (crash)
 - Campi duplicati `intro_path`, `outro_path`, `use_web_search` in config
 - Funzione `generate_audio` duplicata in `tts.py`
 - Chiamate LLM sincrone in contesto async (ora tutte async)
+- Paginazione duplicata (HTMX swap su `#articles-section` con `outerHTML`)
+- `PodcastGenerator()` nel background task usava `.env` invece delle impostazioni web (`_cfg`)
+- Status container mancante nella vista dettaglio articolo
+- Gmail X-GM-LABELS non funzionava con cartelle annidate (`Newsletter/TAAFT`)
 
 **Documentazione**
 - `docs/library.md` — uso come libreria con esempi
-- `docs/web-app.md` — web app, newsletter esempio, REST API, deploy
-- README aggiornato con Docker, multi-LLM, quick start
+- `docs/web-app.md` — web app, newsletter esempio, REST API, deploy, IMAP
+- README aggiornato con Docker, multi-LLM, quick start, IMAP config
 
 ---
 

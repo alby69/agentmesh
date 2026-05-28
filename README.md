@@ -30,11 +30,11 @@ uvicorn podcast_generator.web.app:app --reload
 ## Architettura
 
 ```
-Newsletter (sorgente configurabile)
+Newsletter (Web / RSS / Email IMAP)
        │
        ▼
   ┌───────────┐
-  │  Fetcher  │  Playwright → estrae titolo + contenuto dalla pagina archive
+  │  Fetcher  │  Playwright / feedparser / IMAP → articoli
   └─────┬─────┘
         │
         ▼
@@ -113,11 +113,21 @@ docker run -p 8000:8000 \
 ### Web App
 
 | Variabile | Default | Ruolo |
-|---|---|---|
+|---|---|---|---|
 | `WEB_PASSWORD` | — | Password per accesso Web UI |
 | `API_TOKEN` | — | Token per autenticazione REST API |
 | `WEB_PORT` | `8000` | Porta di ascolto |
 | `WEB_HOST` | `0.0.0.0` | Indirizzo di ascolto |
+
+### IMAP (Email)
+
+| Variabile | Default | Ruolo |
+|---|---|---|
+| `IMAP_HOST` | — | Server IMAP (es. `imap.gmail.com`) |
+| `IMAP_USER` | — | Indirizzo email |
+| `IMAP_PASSWORD` | — | App password (Gmail) |
+| `IMAP_FOLDER` | `INBOX` | Cartella IMAP o label Gmail |
+| `IMAP_MAX_EMAILS` | `100` | Email massime per batch (1-1000) |
 
 ## Utilizzo
 
@@ -175,7 +185,14 @@ Documentazione interattiva: http://localhost:8000/docs
 uvicorn podcast_generator.web.app:app --reload
 ```
 
-Apri http://localhost:8000, incolla URL newsletter, seleziona articoli, genera.
+Apri http://localhost:8000.
+
+**Sorgenti supportate:**
+- **Web** — incolla URL newsletter (Beehiiv, Substack, etc.)
+- **RSS** — feed RSS automatizzato
+- **Email** — configura IMAP via Impostazioni per leggere newsletter via Gmail
+
+Seleziona articoli, clicca **Genera Podcast**, attendi la generazione (polling HTMX), scarica l'MP3.
 
 ## Struttura del progetto
 

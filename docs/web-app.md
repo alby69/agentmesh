@@ -38,16 +38,14 @@ uvicorn podcast_generator.web.app:app --reload
 ### 3. Usa la Web UI
 
 1. Apri http://localhost:8000
-2. Incolla l'URL della newsletter:
-   ```
-   https://newsletter.theresanaiforthat.com
-   ```
-3. Clicca **"Analizza"**
-4. Vedrai la lista degli articoli con checkbox
-5. Seleziona uno o più articoli
-6. Clicca **"Genera Podcast"**
-7. Attendi la generazione (lo spinner HTMX mostra il progresso)
-8. Scarica l'MP3 o ascolta dal player embedded
+2. Scegli la sorgente:
+   - **Web**: incolla URL newsletter (es. `https://newsletter.theresanaiforthat.com`) e clicca **Analizza**
+   - **Email**: vai su **Impostazioni**, configura IMAP (host, utente, password, cartella), torna alla home e clicca **Analizza**
+3. Vedrai la lista degli articoli con checkbox
+4. Seleziona uno o più articoli
+5. Clicca **"Genera Podcast"**
+6. Attendi la generazione (polling HTMX mostra il progresso)
+7. Scarica l'MP3 o ascolta dal player embedded
 
 ### 4. Usa la REST API
 
@@ -109,9 +107,15 @@ Se `API_TOKEN` è vuoto (default), le API sono pubbliche.
 | Metodo | Path | Descrizione |
 |---|---|---|
 | GET | `/` | Home page (form URL + cronologia) |
-| POST | `/fetch-articles` | Estrai articoli da URL (HTMX) |
+| POST | `/fetch-articles` | Estrai articoli da URL/email (HTMX) |
+| POST | `/fetch-more-emails` | Carica più email via IMAP (HTMX) |
+| POST | `/article` | Dettaglio articolo singolo (HTMX) |
 | POST | `/generate` | Avvia generazione (HTMX) |
 | GET | `/check-status/{job_id}` | Polling stato generazione |
+| GET | `/settings` | Pagina impostazioni IMAP/colori |
+| POST | `/settings` | Salva impostazioni |
+| GET | `/imap-folders` | Elenca cartelle/label IMAP |
+| GET | `/imap-debug` | Debug label Gmail X-GM-LABELS |
 | GET | `/download/{folder}/{file}` | Download MP3 |
 | GET | `/login` | Pagina login |
 | POST | `/login` | Autenticazione |
@@ -274,6 +278,38 @@ server {
 }
 ```
 
+## Sorgente Email (IMAP)
+
+Configurabile dalla pagina **Impostazioni** (`/settings`) o via `.env`.
+
+### Gmail
+
+Per usare Gmail serve una **App Password** (la password normale viene rifiutata):
+
+1. Attiva la [verifica in due passaggi](https://myaccount.google.com/security)
+2. Genera una [App Password](https://myaccount.google.com/apppasswords) per "Posta"
+3. Inserisci i dati nelle impostazioni:
+   - **Host**: `imap.gmail.com`
+   - **Utente**: `tua.email@gmail.com`
+   - **Password**: la App Password generata
+   - **Cartella/Label**: `INBOX` o una label Gmail (es. `Newsletter/TAAFT`)
+
+### IMAP via Web UI
+
+1. Vai su **Impostazioni** (in alto a destra)
+2. Compila i campi IMAP
+3. Clicca **"Elenca cartelle disponibili"** per vedere le label/folder raggiungibili
+4. Seleziona una cartella e salva
+5. Torna alla home e clicca **"Analizza"** — gli articoli email appariranno nella lista
+
+### Comportamento
+
+- **100 email** per batch (configurabile 1-1000 via `IMAP_MAX_EMAILS`)
+- Pulsante **"Carica più email"** carica il batch successivo (offset incrementale)
+- I soggetti sono decodificati RFC 2047
+- Cliccando un articolo email si apre la **vista dettaglio** con il contenuto HTML della newsletter
+- Il pulsante **"Genera Podcast"** dalla vista dettaglio usa lo stesso endpoint `/generate`
+
 ## Consigli di sicurezza per produzione
 
 1. **Imposta sempre `WEB_PASSWORD`** — protegge la web UI
@@ -285,17 +321,18 @@ server {
 ## Architettura
 
 ```
-┌──────────┐      ┌──────────────────────────────────────┐
-│ Browser  │─────▶│  FastAPI /podcast_generator/web/      │
-│ (HTMX)   │      │                                      │
-└──────────┘      │  Web UI: /, /login, /fetch-articles  │
-                  │  REST:   /api/v1/generate, /episodes  │
-                  │  Files:  /download/{folder}/{file}    │
-                  │  Feed:   /rss                         │
-                  │                                      │
-                  │  Background task → PodcastGenerator   │
-                  │  (builder.py)                         │
-                  └──────────────────┬───────────────────┘
+┌──────────┐      ┌──────────────────────────────────────────┐
+│ Browser  │─────▶│  FastAPI /podcast_generator/web/          │
+│ (HTMX)   │      │                                          │
+└──────────┘      │  Web UI: /, /settings, /fetch-articles   │
+                  │  REST:   /api/v1/generate, /episodes      │
+                  │  Files:  /download/{folder}/{file}        │
+                  │  Feed:   /rss                             │
+                  │  IMAP:   /fetch-more-emails, /imap-folders│
+                  │                                          │
+                  │  Background task → PodcastGenerator       │
+                  │  (builder.py)                             │
+                  └──────────────────┬───────────────────────┘
                                      │
                             ┌────────▼────────┐
                             │   podcast.db     │
@@ -316,8 +353,11 @@ server {
 
 ## Note tecniche
 
-- La generazione podcast avviene in **background** tramite `BackgroundTasks` di FastAPI
+- La generazione podcast avviene in **background** tramite `asyncio.create_task`
 - I job sono in **memoria** (dict) — un restart del server cancella i job in corso
+- Le email via IMAP supportano **Gmail X-GM-LABELS** (etichette create dall'utente) e cartelle standard
+- L'estrazione del contenuto email usa 5 strategie di fallback per la risoluzione UID (label → All Mail → INBOX → scansione)
+- I soggetti delle email sono decodificati RFC 2047 (supporto caratteri accentati/codificati)
 - I file MP3 generati sono **persistenti** in `output/`
 - La cronologia episodi è in **SQLite** (`podcast.db`) — persistente tra restart
 - Se vuoi supportare più job concorrenti, considera Redis/Celery

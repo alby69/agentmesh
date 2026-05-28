@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     imap_user: str = Field(default="")
     imap_password: str = Field(default="")
     imap_folder: str = Field(default="INBOX")
+    imap_max_emails: int = Field(default=100, ge=1, le=1000)
 
     # === UI Customization ===
     ui_primary_color: str = Field(default="#2563eb")  # blue-600

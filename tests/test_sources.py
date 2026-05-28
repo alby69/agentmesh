@@ -37,10 +37,16 @@ async def test_get_email_articles():
 
     with patch("podcast_generator.fetcher.MailBox") as MockMailBox:
         mock_mailbox_instance = MockMailBox.return_value
-        mock_mailbox_instance.login.return_value.__enter__.return_value.fetch.return_value = [mock_msg]
+        mock_client = MagicMock()
+        mock_mailbox_instance.client = mock_client
+        mock_client.search.return_value = ("OK", [b"1"])
+        mock_client.fetch.return_value = ("OK", [
+            (b"1 (UID 123)", b"Subject: Email Subject\r\nDate: 2024-05-26 10:00:00\r\n\r\n")
+        ])
 
-        articles = await get_email_articles("host", "user", "pass")
+        articles, total = await get_email_articles("host", "user", "pass")
         assert len(articles) == 1
+        assert total == 1
         assert articles[0].href == "email://123"
         assert articles[0].text == "Email Subject"
 
@@ -55,7 +61,13 @@ async def test_fetch_email_content():
 
     with patch("podcast_generator.fetcher.MailBox") as MockMailBox:
         mock_mailbox_instance = MockMailBox.return_value
-        mock_mailbox_instance.login.return_value.__enter__.return_value.fetch.return_value = [mock_msg]
+        mock_client = MagicMock()
+        mock_mailbox_instance.client = mock_client
+        mock_client.search.return_value = ("OK", [b"1"])
+        mock_client.fetch.return_value = ("OK", [
+            (b"1 (UID 123)", b"Subject: Email Subject\r\nContent-Type: text/html\r\n\r\n<html><body>Email HTML content</body></html>")
+        ])
+        mock_mailbox_instance.fetch.return_value = [mock_msg]
 
         with patch("trafilatura.extract", return_value="Extracted content"):
             newsletter = await fetch_email_content("host", "user", "pass", "123")

@@ -1,5 +1,5 @@
 {% if not partial %}
-<div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200"
+<div id="articles-section" class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200"
      hx-history="false">
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-2xl font-bold text-slate-800">
@@ -13,10 +13,13 @@
         </div>
     </div>
     {% if total > 0 %}
-    <div class="text-sm text-gray-400 mb-4">
-        {{ articles|length }} articoli
-        {% if total > articles|length %}
-            di {{ total }} totali
+    <div class="text-sm text-gray-400 mb-4 flex items-center gap-3">
+        <span>{{ articles|length }} articoli{% if email_total > articles|length %} di {{ email_total }} totali{% endif %}</span>
+        {% if email_total > email_offset %}
+        <button hx-post="/fetch-more-emails" hx-target="#articles-section" hx-swap="outerHTML"
+                class="text-primary hover:underline text-xs">
+            Carica più email
+        </button>
         {% endif %}
     </div>
     {% endif %}
@@ -34,8 +37,8 @@
                     <button type="button"
                             hx-post="/article"
                             hx-vals='{"url":{{ article.href|tojson }},"title":{{ article.text|tojson }},"date":{{ article.date|tojson }},"duration":{{ article.duration|tojson }},"description":{{ article.description|tojson }},"newsletter_url":{{ newsletter_url|tojson }}}'
-                            hx-target="#articles-container"
-                            hx-swap="innerHTML"
+                            hx-target="#articles-section"
+                            hx-swap="outerHTML"
                             class="font-bold text-slate-800 hover:text-primary transition leading-snug cursor-pointer bg-transparent border-none p-0 text-left w-full">
                         {{- article.text -}}
                     </button>
@@ -70,8 +73,8 @@
             </div>
             <div class="flex items-center gap-2">
                 <button hx-get="/articles?page={{ page - 1 }}"
-                        hx-target="#articles-container"
-                        hx-swap="innerHTML"
+                        hx-target="#articles-section"
+                        hx-swap="outerHTML"
                         class="px-4 py-2 text-sm rounded-lg transition font-medium
                                {% if page > 1 %}
                                bg-gray-100 hover:bg-gray-200 text-gray-700
@@ -83,8 +86,8 @@
                 </button>
                 <span class="text-sm font-bold text-primary min-w-[2.5rem] text-center">{{ page }}</span>
                 <button hx-get="/articles?page={{ page + 1 }}"
-                        hx-target="#articles-container"
-                        hx-swap="innerHTML"
+                        hx-target="#articles-section"
+                        hx-swap="outerHTML"
                         class="px-4 py-2 text-sm rounded-lg transition font-medium
                                {% if page < total_pages %}
                                bg-primary text-white hover:bg-primary-dark
