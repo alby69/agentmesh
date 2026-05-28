@@ -64,9 +64,8 @@ Trasformare il progetto in una **libreria Python installabile** con API pulita, 
 - Fallback a `WEB_PASSWORD` se nessun OAuth configurato
 - Modalità sviluppo senza autenticazione se nessuna protezione configurata
 - Route `/auth/google`, `/auth/github`, `/auth/callback`, `/logout`
-- CSRF via cookie + header (`X-CSRF-Token`)
-- `SessionMiddleware` per stato OAuth (state parameter)
 - Avatar e nome utente in navbar
+- Scambio codice OAuth manuale con `httpx` (bypassa authlib session state, robusto anche con `--reload`)
 
 **Lingua podcast configurabile**
 - Campo `language` in Settings (predefinito: `italiano`)

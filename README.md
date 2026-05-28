@@ -24,7 +24,7 @@ uvicorn podcast_generator.web.app:app --reload
 | Documento | Contenuto |
 |---|---|
 | `docs/library.md` | Usare come libreria Python (API completa, configurazione, esempi) |
-| `docs/web-app.md` | Usare come web app (newsletter esempio, REST API, auth, deploy) |
+| `docs/web-app.md` | Usare come web app (auth OAuth, REST API, deploy, IMAP) |
 | `ROADMAP.md` | Stato attuale e funzioni future |
 
 ## Architettura
@@ -101,13 +101,13 @@ docker run -p 8000:8000 \
 
 ### Newsletter / Scraping
 
-| Variabile | Obbligatoria | Default |
+| Variabile | Obbligatoria | Default | Descrizione |
 |---|---|---|---|
-| `NEWSLETTER_URL` | No* | — |
-| `ARCHIVE_URL` | No* | `{NEWSLETTER_URL}/archive` |
+| `NEWSLETTER_URL` | No* | — | URL principale newsletter |
+| `ARCHIVE_URL` | No* | `{NEWSLETTER_URL}/archive` | URL archivio articoli |
 | `LANGUAGE` | No | `italiano` | Lingua di traduzione (italiano, inglese, francese, tedesco, spagnolo, portoghese) |
-| `LOAD_MORE_SELECTOR` | No | `button:has-text('Load More')...` |
-| `LINK_PATTERN` | No | `/p/` |
+| `LOAD_MORE_SELECTOR` | No | `button:has-text('Load More')...` | Selettore CSS per caricare più articoli |
+| `LINK_PATTERN` | No | `/p/` | Pattern regex per link articoli |
 
 \* Almeno uno tra `NEWSLETTER_URL` e `ARCHIVE_URL` deve essere impostato.
 
@@ -121,17 +121,22 @@ Supporta **OAuth** (Google/GitHub) e **password condivisa** come fallback.
 | `OAUTH_GOOGLE_CLIENT_SECRET` | — | Client Secret Google OAuth |
 | `OAUTH_GITHUB_CLIENT_ID` | — | Client ID GitHub OAuth |
 | `OAUTH_GITHUB_CLIENT_SECRET` | — | Client Secret GitHub OAuth |
-| `JWT_SECRET` | `change-me` | Chiave HMAC per firma JWT |
-| `WEB_PASSWORD` | — | Password fallback (se nessun OAuth) |
-| `API_TOKEN` | — | Token per autenticazione REST API |
+| `JWT_SECRET` | `change-me` | Chiave HMAC per firma JWT (cambiare in produzione) |
+| `WEB_PASSWORD` | — | Password fallback (se nessun OAuth configurato) |
+| `API_TOKEN` | — | Token per autenticazione REST API (vuoto = API pubbliche) |
 | `WEB_PORT` | `8000` | Porta di ascolto |
 | `WEB_HOST` | `0.0.0.0` | Indirizzo di ascolto |
 
 **Flusso autenticazione Web UI:**
-1. Se `OAUTH_GOOGLE_CLIENT_ID` o `OAUTH_GITHUB_CLIENT_ID` è configurato → pulsanti OAuth nella pagina di login
-2. Se solo `WEB_PASSWORD` è impostato → form password
+1. Se `OAUTH_GOOGLE_CLIENT_ID` o `OAUTH_GITHUB_CLIENT_ID` configurato → pulsanti OAuth nella pagina di login
+2. Se solo `WEB_PASSWORD` impostato → form password
 3. Se nessuno dei due → accesso libero (modalità sviluppo)
 4. L'RSS feed e i download audio sono pubblici (nessuna autenticazione)
+
+**URI di callback da registrare in Google Cloud Console:**
+```
+http://localhost:8000/auth/callback
+```
 
 ### IMAP (Email)
 
@@ -204,28 +209,28 @@ Apri http://localhost:8000.
 **Sorgenti supportate:**
 - **Web** — incolla URL newsletter (Beehiiv, Substack, etc.)
 - **RSS** — feed RSS automatizzato
-- **Email** — configura IMAP via Impostazioni per leggere newsletter via Gmail
+- **Email** — configura IMAP via Impostazioni
 
-Seleziona articoli, clicca **Genera Podcast**, attendi la generazione (polling HTMX), scarica l'MP3.
+Seleziona articoli, clicca **Genera Podcast**, attendi (polling HTMX), scarica l'MP3.
 
 ## Struttura del progetto
 
 ```
 ├── podcast_generator/          # Libreria Python
-│   ├── config.py               # Pydantic Settings V2 (multi-LLM)
-│   ├── models.py               # Pydantic models (Newsletter, Episode, ...)
+│   ├── config.py               # Pydantic Settings V2 (multi-LLM, OAuth)
+│   ├── models.py               # Pydantic models
 │   ├── exceptions.py           # Errori custom
 │   ├── fetcher.py              # Playwright scraping
 │   ├── translator.py           # Multi-LLM (Gemini, OpenAI, Anthropic, Ollama)
 │   ├── tts.py                  # Edge-TTS / ElevenLabs
 │   ├── audio.py                # pydub utilities
 │   ├── tracker.py              # JSON deduplicazione
-│   ├── builder.py              # PodcastGenerator class (API pubblica)
-│   ├── pipeline.py             # Rich progress CLI wrapper
+│   ├── builder.py              # PodcastGenerator (API pubblica)
+│   ├── pipeline.py             # Rich CLI wrapper
 │   └── web/
-│       ├── app.py              # FastAPI (Web UI + REST API)
+│       ├── app.py              # FastAPI (Web UI + REST API + OAuth)
 │       ├── auth.py             # OAuth (Google/GitHub) + JWT + Bearer token
-│       ├── db.py               # sqlite3
+│       ├── db.py               # sqlite3 (episodi + utenti)
 │       └── templates/          # Jinja2 + HTMX + Tailwind
 ├── main.py                     # CLI entrypoint (Typer)
 ├── Dockerfile                  # Deploy containerizzato
@@ -253,7 +258,7 @@ Seleziona articoli, clicca **Genera Podcast**, attendi la generazione (polling H
 |---|---|---|
 | Scraping | Playwright (Firefox) | Gratuito |
 | LLM | Gemini / OpenAI / Anthropic / Ollama | Gratuito (Gemini free tier) |
-| TTS | Edge-TTS (Microsoft) | Gratuito, nessun limite |
+| TTS | Edge-TTS (Microsoft) | Gratuito |
 | Audio | pydub + FFmpeg | Gratuito |
 | CLI | Typer + Rich | Gratuito |
 | Web | FastAPI + HTMX + Tailwind | Gratuito |
