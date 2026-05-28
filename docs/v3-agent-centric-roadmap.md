@@ -37,7 +37,7 @@ sequenceDiagram
     NR-->>User: Notifica Nuovo Episodio
 ```
 
-### Protocolli e NIP Adoptati
+### Protocolli e NIP Adottati
 *   **Identità:** NIP-01 (Basic protocol flow) e NIP-19 (Bech32-encoded keys/events).
 *   **Metadata File:** **NIP-94 (File Metadata)**. Questo permette ai client Nostr di riconoscere l'evento come un file multimediale scaricabile, con tag per:
     *   `url`: Link IPFS/Gateway.
