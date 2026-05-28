@@ -13,6 +13,7 @@ from typing import Optional
 from fastapi import FastAPI, Request, Form, Query, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from httpx import AsyncClient
 from starlette.middleware.sessions import SessionMiddleware
 
 from podcast_generator.config import Settings
@@ -90,67 +91,124 @@ async def auth_github(request: Request):
 
 
 @app.get("/auth/callback")
-async def auth_callback(request: Request):
+async def auth_callback(
+    request: Request,
+    code: str = Query(""),
+    state: str = Query(""),
+    iss: str = Query(""),
+):
+    if "google" in iss:
+        return await _google_callback(code, request)
+
+    if "github" in iss:
+        return await _github_callback(code, request)
+
+    return await _try_callback(code, state, request)
+
+
+async def _google_callback(code: str, request: Request):
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        "code": code,
+        "client_id": _cfg.oauth_google_client_id,
+        "client_secret": _cfg.oauth_google_client_secret,
+        "redirect_uri": _normalize_url(str(request.base_url).rstrip("/")) + "/auth/callback",
+        "grant_type": "authorization_code",
+    }
+    async with AsyncClient() as cl:
+        r = await cl.post(token_url, data=data)
+        if r.status_code != 200:
+            return RedirectResponse(f"/login?error=google_token:{r.text}", status_code=303)
+        token = r.json()
+        r = await cl.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {token['access_token']}"},
+        )
+        if r.status_code != 200:
+            return RedirectResponse(f"/login?error=google_userinfo:{r.text}", status_code=303)
+        ui = r.json()
+        return _login_user(
+            email=ui.get("email", ""),
+            name=ui.get("name", ""),
+            picture=ui.get("picture", ""),
+            provider="google",
+            uid=str(ui.get("sub", "")),
+        )
+
+
+async def _github_callback(code: str, request: Request):
+    token_url = "https://github.com/login/oauth/access_token"
+    data = {
+        "code": code,
+        "client_id": _cfg.oauth_github_client_id,
+        "client_secret": _cfg.oauth_github_client_secret,
+        "redirect_uri": _normalize_url(str(request.base_url).rstrip("/")) + "/auth/callback",
+    }
+    headers = {"Accept": "application/json"}
+    async with AsyncClient() as cl:
+        r = await cl.post(token_url, data=data, headers=headers)
+        if r.status_code != 200:
+            return RedirectResponse(f"/login?error=github_token:{r.text}", status_code=303)
+        token = r.json()
+        r = await cl.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"Bearer {token['access_token']}", "Accept": "application/json"},
+        )
+        if r.status_code != 200:
+            return RedirectResponse(f"/login?error=github_userinfo:{r.text}", status_code=303)
+        ui = r.json()
+        email = ui.get("email", "")
+        if not email:
+            r = await cl.get(
+                "https://api.github.com/user/emails",
+                headers={"Authorization": f"Bearer {token['access_token']}", "Accept": "application/json"},
+            )
+            for e in r.json():
+                if e.get("primary"):
+                    email = e["email"]
+                    break
+        return _login_user(
+            email=email,
+            name=ui.get("name", "") or ui.get("login", "User"),
+            picture=ui.get("avatar_url", ""),
+            provider="github",
+            uid=str(ui.get("id", "")),
+        )
+
+
+async def _try_callback(code: str, state: str, request: Request):
     for provider in ("google", "github"):
         client = getattr(_oauth, provider, None)
         if not client or not client.client_id:
             continue
         try:
-            token = await client.authorize_access_token(request)
+            await client.authorize_access_token(request)
         except Exception:
             continue
-
-        try:
-            if provider == "google":
-                resp = await client.get(
-                    "https://www.googleapis.com/oauth2/v3/userinfo", token=token
-                )
-                ui = resp.json()
-                uid, email, name, picture = (
-                    str(ui.get("sub", "")),
-                    ui.get("email", ""),
-                    ui.get("name", ""),
-                    ui.get("picture", ""),
-                )
-            elif provider == "github":
-                resp = await client.get("https://api.github.com/user", token=token)
-                ui = resp.json()
-                if not ui.get("email"):
-                    eresp = await client.get(
-                        "https://api.github.com/user/emails", token=token
-                    )
-                    for e in eresp.json():
-                        if e.get("primary"):
-                            ui["email"] = e["email"]
-                            break
-                uid = str(ui.get("id", ""))
-                email = ui.get("email", "")
-                name = ui.get("name", "") or ui.get("login", email.split("@")[0])
-                picture = ui.get("avatar_url", "")
-
-            if not email:
-                return RedirectResponse("/login?error=no_email", status_code=303)
-
-            user = get_user_by_email(email)
-            if not user:
-                user = create_user(email, name, picture, provider, uid)
-
-            session_token = create_session_token(user, _cfg.jwt_secret)
-            resp = RedirectResponse("/", status_code=303)
-            resp.set_cookie(
-                key="session",
-                value=session_token,
-                httponly=True,
-                max_age=86400 * 7,
-                samesite="lax",
-            )
-            return resp
-        except Exception as e:
-            return RedirectResponse(
-                f"/login?error={provider}_failed:{e}", status_code=303
-            )
-
+        if provider == "google":
+            return await _google_callback(code, request)
+        return await _github_callback(code, request)
     return RedirectResponse("/login?error=auth_failed", status_code=303)
+
+
+def _login_user(email: str, name: str, picture: str, provider: str, uid: str):
+    if not email:
+        return RedirectResponse("/login?error=no_email", status_code=303)
+
+    user = get_user_by_email(email)
+    if not user:
+        user = create_user(email, name, picture, provider, uid)
+
+    session_token = create_session_token(user, _cfg.jwt_secret)
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(
+        key="session",
+        value=session_token,
+        httponly=True,
+        max_age=86400 * 7,
+        samesite="lax",
+    )
+    return resp
 
 
 # ── Web UI Routes ──────────────────────────────────────────────
