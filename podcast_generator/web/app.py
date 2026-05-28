@@ -227,6 +227,7 @@ async def save_settings(
     imap_password: str = Form(...),
     imap_folder: str = Form(...),
     imap_max_emails: int = Form(100),
+    language: str = Form("italiano"),
     _=Depends(verify_web_password),
 ):
     _cfg.ui_primary_color = ui_primary_color
@@ -236,6 +237,7 @@ async def save_settings(
     _cfg.imap_password = imap_password
     _cfg.imap_folder = imap_folder
     _cfg.imap_max_emails = imap_max_emails
+    _cfg.language = language
 
     # In a real app, we'd save to .env or a DB. For now, it's in-memory for the session.
     return RedirectResponse(url="/settings", status_code=303)

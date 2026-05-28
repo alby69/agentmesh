@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     newsletter_url: str = Field(default="")
     archive_url: str = Field(default="")
     rss_urls: list[str] = Field(default_factory=list)
+    language: str = Field(default="italiano")
 
     # === IMAP Settings ===
     imap_host: str = Field(default="")

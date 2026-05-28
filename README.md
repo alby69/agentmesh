@@ -102,9 +102,10 @@ docker run -p 8000:8000 \
 ### Newsletter / Scraping
 
 | Variabile | Obbligatoria | Default |
-|---|---|---|
+|---|---|---|---|
 | `NEWSLETTER_URL` | No* | — |
 | `ARCHIVE_URL` | No* | `{NEWSLETTER_URL}/archive` |
+| `LANGUAGE` | No | `italiano` | Lingua di traduzione (italiano, inglese, francese, tedesco, spagnolo, portoghese) |
 | `LOAD_MORE_SELECTOR` | No | `button:has-text('Load More')...` |
 | `LINK_PATTERN` | No | `/p/` |
 

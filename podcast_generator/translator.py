@@ -6,21 +6,23 @@ from typing import Optional
 from podcast_generator.config import Settings
 from podcast_generator.exceptions import TranslationError
 
-SYSTEM_PROMPT = """Sei un autore e conduttore di podcast tecnologici italiani.
-
+LANGUAGE_SYSTEM_PROMPT = """Sei un autore e conduttore di podcast tecnologici.
 Il tuo compito è prendere una o più newsletter tecniche in inglese e trasformarle
-in un coinvolgente script per un podcast in italiano.
+in un coinvolgente script per un podcast in {language}.
 
 REGOLE:
-- Traduci in italiano, ma adatta il tono all'ascolto: colloquiale, dinamico, entusiasta
+- Traduci in {language}, ma adatta il tono all'ascolto: colloquiale, dinamico, entusiasta
 - Non elencare i tool in modo freddo: presentali con transizioni naturali
-  ("Oggi parliamo di un tool pazzesco che...", "Passiamo ora a...")
 - Se ci sono più newsletter, uniscile in un unico episodio settimanale
   creando macro-categorie e rimuovendo duplicati
-- Inizia direttamente con "Ciao a tutti e benvenuti a un nuovo episodio di..."
+- Inizia direttamente con un saluto appropriato nella lingua di destinazione
 - Non aggiungere NOTE, INTRODUZIONI o commenti meta (es. "Ecco lo script")
 - Produci solo il testo da leggere, senza markup o istruzioni di regia
 - Ogni episodio deve essere un monologo fluido e piacevole da ascoltare"""
+
+
+def build_system_prompt(language: str) -> str:
+    return LANGUAGE_SYSTEM_PROMPT.format(language=language)
 
 
 class LLMProvider(ABC):
@@ -153,7 +155,8 @@ def _get_model(cfg: Settings) -> str:
 
 
 def _build_generation_config(cfg: Settings) -> dict:
-    config = {"system_instruction": SYSTEM_PROMPT}
+    prompt = build_system_prompt(cfg.language)
+    config = {"system_instruction": prompt}
     if cfg.use_web_search and cfg.llm_provider == "gemini":
         config["tools"] = [{"google_search": {}}]
     return config
@@ -164,17 +167,18 @@ async def translate_newsletter(
 ) -> str:
     provider = get_llm_provider(cfg)
     model = _get_model(cfg)
+    system_prompt = build_system_prompt(cfg.language)
 
     if cfg.use_web_search:
         prompt = (
-            f"Testo da convertire in podcast:\n\n{text}\n\n"
+            f"Testo da convertire in podcast in {cfg.language}:\n\n{text}\n\n"
             "IMPORTANTE: Usa Google Search per approfondire ogni notizia citata, "
             "aggiungendo dettagli tecnici, contesto e curiosità recenti."
         )
     else:
-        prompt = f"Testo da convertire in podcast:\n\n{text}"
+        prompt = f"Testo da convertire in podcast in {cfg.language}:\n\n{text}"
 
-    return await provider.generate(model, SYSTEM_PROMPT, prompt)
+    return await provider.generate(model, system_prompt, prompt)
 
 
 async def translate_multiple(
@@ -182,6 +186,7 @@ async def translate_multiple(
 ) -> str:
     provider = get_llm_provider(cfg)
     model = _get_model(cfg)
+    system_prompt = build_system_prompt(cfg.language)
 
     combined = "\n\n--- NUOVA NEWSLETTER ---\n\n".join(
         f"TITOLO: {title}\nTESTO:\n{content}"
@@ -191,7 +196,7 @@ async def translate_multiple(
     prompt = (
         "Qui ci sono PIU' newsletter da unire in un unico episodio podcast "
         "settimanale. Riorganizzale per argomento, elimina duplicati e crea "
-        "un monologo fluido.\n\n"
+        f"un monologo fluido in {cfg.language}.\n\n"
         f"{combined}"
     )
 
@@ -201,4 +206,4 @@ async def translate_multiple(
             "aggiungendo dettagli tecnici e contesto aggiornato."
         )
 
-    return await provider.generate(model, SYSTEM_PROMPT, prompt)
+    return await provider.generate(model, system_prompt, prompt)
