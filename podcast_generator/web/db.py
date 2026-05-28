@@ -30,6 +30,17 @@ def init_db():
                 created_at TEXT NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                picture TEXT NOT NULL DEFAULT '',
+                provider TEXT NOT NULL,
+                provider_id TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
 
 
 def add_episode(
@@ -63,3 +74,35 @@ def get_episode(episode_id: int) -> Optional[dict]:
             "SELECT * FROM episodes WHERE id = ?", (episode_id,)
         ).fetchone()
         return dict(row) if row else None
+
+
+def get_user_by_email(email: str) -> Optional[dict]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE email = ?", (email,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_user(user_id: int) -> Optional[dict]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def create_user(
+    email: str, name: str, picture: str, provider: str, provider_id: str
+) -> dict:
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """INSERT INTO users (email, name, picture, provider, provider_id, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (email, name, picture, provider, provider_id, datetime.now().isoformat()),
+        )
+        return dict(
+            conn.execute(
+                "SELECT * FROM users WHERE id = ?", (cursor.lastrowid,)
+            ).fetchone()
+        )

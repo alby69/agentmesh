@@ -111,14 +111,27 @@ docker run -p 8000:8000 \
 
 \* Almeno uno tra `NEWSLETTER_URL` e `ARCHIVE_URL` deve essere impostato.
 
-### Web App
+### Web App — Autenticazione
+
+Supporta **OAuth** (Google/GitHub) e **password condivisa** come fallback.
 
 | Variabile | Default | Ruolo |
 |---|---|---|
-| `WEB_PASSWORD` | — | Password per accesso Web UI |
+| `OAUTH_GOOGLE_CLIENT_ID` | — | Client ID Google OAuth |
+| `OAUTH_GOOGLE_CLIENT_SECRET` | — | Client Secret Google OAuth |
+| `OAUTH_GITHUB_CLIENT_ID` | — | Client ID GitHub OAuth |
+| `OAUTH_GITHUB_CLIENT_SECRET` | — | Client Secret GitHub OAuth |
+| `JWT_SECRET` | `change-me` | Chiave HMAC per firma JWT |
+| `WEB_PASSWORD` | — | Password fallback (se nessun OAuth) |
 | `API_TOKEN` | — | Token per autenticazione REST API |
 | `WEB_PORT` | `8000` | Porta di ascolto |
 | `WEB_HOST` | `0.0.0.0` | Indirizzo di ascolto |
+
+**Flusso autenticazione Web UI:**
+1. Se `OAUTH_GOOGLE_CLIENT_ID` o `OAUTH_GITHUB_CLIENT_ID` è configurato → pulsanti OAuth nella pagina di login
+2. Se solo `WEB_PASSWORD` è impostato → form password
+3. Se nessuno dei due → accesso libero (modalità sviluppo)
+4. L'RSS feed e i download audio sono pubblici (nessuna autenticazione)
 
 ### IMAP (Email)
 
@@ -211,7 +224,7 @@ Seleziona articoli, clicca **Genera Podcast**, attendi la generazione (polling H
 │   ├── pipeline.py             # Rich progress CLI wrapper
 │   └── web/
 │       ├── app.py              # FastAPI (Web UI + REST API)
-│       ├── auth.py             # Bearer token + cookie auth
+│       ├── auth.py             # OAuth (Google/GitHub) + JWT + Bearer token
 │       ├── db.py               # sqlite3
 │       └── templates/          # Jinja2 + HTMX + Tailwind
 ├── main.py                     # CLI entrypoint (Typer)

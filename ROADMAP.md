@@ -56,6 +56,24 @@ Trasformare il progetto in una **libreria Python installabile** con API pulita, 
 - `docs/web-app.md` — web app, newsletter esempio, REST API, deploy, IMAP
 - README aggiornato con Docker, multi-LLM, quick start, IMAP config
 
+**Autenticazione OAuth + JWT**
+- Login via **Google OAuth** (OpenID Connect) e **GitHub OAuth**
+- **JWT HS256** firmato per sessioni (7 giorni)
+- Tabella `users` in sqlite3 con profilo (email, nome, avatar)
+- `create_session_token` / `decode_session_token` per gestione sessioni
+- Fallback a `WEB_PASSWORD` se nessun OAuth configurato
+- Modalità sviluppo senza autenticazione se nessuna protezione configurata
+- Route `/auth/google`, `/auth/github`, `/auth/callback`, `/logout`
+- CSRF via cookie + header (`X-CSRF-Token`)
+- `SessionMiddleware` per stato OAuth (state parameter)
+- Avatar e nome utente in navbar
+
+**Lingua podcast configurabile**
+- Campo `language` in Settings (predefinito: `italiano`)
+- Selettore lingua in pagina Impostazioni
+- `build_system_prompt(language)` parametrizzato
+- Audio (TTS) sempre in italiano indipendentemente dalla lingua di traduzione
+
 ---
 
 ## Proposte per il futuro

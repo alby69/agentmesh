@@ -74,9 +74,13 @@ class Settings(BaseSettings):
     outro_path: Optional[Path] = Field(default=None)
 
     # === Web Auth ===
+    oauth_google_client_id: str = Field(default="")
+    oauth_google_client_secret: str = Field(default="")
+    oauth_github_client_id: str = Field(default="")
+    oauth_github_client_secret: str = Field(default="")
+    jwt_secret: str = Field(default="change-me")
     web_password: str = Field(default="")
     api_token: str = Field(default="")
-    web_secret_key: str = Field(default="change-me-in-production")
     web_port: int = Field(default=8000)
     web_host: str = Field(default="0.0.0.0")
 

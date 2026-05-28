@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import math
 import re
 import uuid
@@ -12,13 +13,20 @@ from typing import Optional
 from fastapi import FastAPI, Request, Form, Query, Depends, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
 from podcast_generator.config import Settings
 from podcast_generator.models import ArticleSummary, GenerationJob, JobStatus
 from podcast_generator.builder import PodcastGenerator
-from podcast_generator.fetcher import get_article_list, fetch_article_html, get_rss_articles, get_email_articles, fetch_email_content, list_imap_folders
-from podcast_generator.web.db import init_db, add_episode, get_episodes
-from podcast_generator.web.auth import verify_web_password, verify_api_token
+from podcast_generator.fetcher import (
+    get_article_list, fetch_article_html, get_rss_articles,
+    get_email_articles, fetch_email_content, list_imap_folders,
+)
+from podcast_generator.web.db import init_db, add_episode, get_episodes, get_user_by_email, create_user
+from podcast_generator.web.auth import (
+    verify_api_token, get_current_user,
+    init_oauth, create_session_token, _oauth,
+)
 
 templates = Jinja2Templates(
     directory=str(Path(__file__).parent / "templates")
@@ -39,6 +47,7 @@ async def _lifespan(app):
     init_db()
     (_cfg.output_dir / "daily").mkdir(parents=True, exist_ok=True)
     (_cfg.output_dir / "weekly").mkdir(parents=True, exist_ok=True)
+    init_oauth(_cfg)
     yield
 
 
@@ -49,20 +58,95 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_cfg.jwt_secret,
+    max_age=3600,  # OAuth state expires in 1 hour
+    same_site="lax",
+)
+
+
+# ── Auth Routes ────────────────────────────────────────────────
+
+
+@app.get("/auth/google")
+async def auth_google(request: Request):
+    if not _cfg.oauth_google_client_id:
+        return RedirectResponse("/login?error=google_not_configured", status_code=303)
+    redirect_uri = request.url_for("auth_callback")
+    return await _oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@app.get("/auth/github")
+async def auth_github(request: Request):
+    if not _cfg.oauth_github_client_id:
+        return RedirectResponse("/login?error=github_not_configured", status_code=303)
+    redirect_uri = request.url_for("auth_callback")
+    return await _oauth.github.authorize_redirect(request, redirect_uri)
+
+
+@app.get("/auth/callback")
+async def auth_callback(request: Request):
+    try:
+        token = await _oauth.google.authorize_access_token(request)
+        userinfo = token.get("userinfo")
+        if not userinfo:
+            userinfo = await _oauth.google.parse_id_token(request, token)
+        provider = "google"
+    except Exception:
+        try:
+            token = await _oauth.github.authorize_access_token(request)
+            resp = await _oauth.github.get("https://api.github.com/user", token=token)
+            userinfo = resp.json()
+            if not userinfo.get("email"):
+                emails_resp = await _oauth.github.get(
+                    "https://api.github.com/user/emails", token=token
+                )
+                for e in emails_resp.json():
+                    if e.get("primary"):
+                        userinfo["email"] = e["email"]
+                        break
+            provider = "github"
+        except Exception as e:
+            return RedirectResponse(f"/login?error=auth_failed:{e}", status_code=303)
+
+    email = (userinfo or {}).get("email", "")
+    name = (userinfo or {}).get("name", "") or (userinfo or {}).get("login", email.split("@")[0])
+    picture = (userinfo or {}).get("picture", "") or (userinfo or {}).get("avatar_url", "")
+    provider_id = str((userinfo or {}).get("sub", "") or (userinfo or {}).get("id", ""))
+
+    if not email:
+        return RedirectResponse("/login?error=no_email", status_code=303)
+
+    user = get_user_by_email(email)
+    if not user:
+        user = create_user(email, name, picture, provider, provider_id)
+
+    session_token = create_session_token(user, _cfg.jwt_secret)
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(
+        key="session",
+        value=session_token,
+        httponly=True,
+        max_age=86400 * 7,
+        samesite="lax",
+    )
+    return resp
+
 
 # ── Web UI Routes ──────────────────────────────────────────────
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, _=Depends(verify_web_password)):
+async def index(request: Request, user: dict = Depends(get_current_user)):
     episodes = get_episodes()
     return templates.TemplateResponse(
-        request, "index.html", {"episodes": episodes, "config": _cfg}
+        request, "index.html", {"episodes": episodes, "config": _cfg, "user": user}
     )
 
 
 @app.post("/imap-folders", response_class=JSONResponse)
-async def imap_folders(_=Depends(verify_web_password)):
+async def imap_folders(_=Depends(get_current_user)):
     if not _cfg.imap_host or not _cfg.imap_user or not _cfg.imap_password:
         return JSONResponse(
             {"error": "Configura prima Host, Email e Password nelle impostazioni"},
@@ -78,7 +162,7 @@ async def imap_folders(_=Depends(verify_web_password)):
 
 
 @app.post("/imap-debug", response_class=JSONResponse)
-async def imap_debug(_=Depends(verify_web_password)):
+async def imap_debug(_=Depends(get_current_user)):
     if not _cfg.imap_host or not _cfg.imap_user or not _cfg.imap_password:
         return JSONResponse({"error": "Configura prima le credenziali"}, status_code=400)
     try:
@@ -137,7 +221,7 @@ async def fetch_articles(
     request: Request,
     newsletter_url: Optional[str] = Form(None),
     source_type: str = Form("web"),
-    _=Depends(verify_web_password),
+    _=Depends(get_current_user),
 ):
     try:
         if source_type == "email":
@@ -184,7 +268,7 @@ async def fetch_articles(
 @app.post("/fetch-more-emails", response_class=HTMLResponse)
 async def fetch_more_emails(
     request: Request,
-    _=Depends(verify_web_password),
+    _=Depends(get_current_user),
 ):
     offset = _article_cache.get("email_offset", 100)
     limit = _article_cache.get("email_limit", 100)
@@ -211,9 +295,9 @@ async def fetch_more_emails(
 
 
 @app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request, _=Depends(verify_web_password)):
+async def settings_page(request: Request, user: dict = Depends(get_current_user)):
     return templates.TemplateResponse(
-        request, "settings.html", {"config": _cfg}
+        request, "settings.html", {"config": _cfg, "user": user}
     )
 
 
@@ -228,7 +312,7 @@ async def save_settings(
     imap_folder: str = Form(...),
     imap_max_emails: int = Form(100),
     language: str = Form("italiano"),
-    _=Depends(verify_web_password),
+    _=Depends(get_current_user),
 ):
     _cfg.ui_primary_color = ui_primary_color
     _cfg.ui_accent_color = ui_accent_color
@@ -281,7 +365,7 @@ async def _render_articles(
 async def get_articles(
     request: Request,
     page: int = Query(1),
-    _=Depends(verify_web_password),
+    _=Depends(get_current_user),
 ):
     return await _render_articles(request, page=page, partial=False)
 
@@ -295,7 +379,7 @@ async def article_detail(
     date: str = Form(default=""),
     duration: str = Form(default=""),
     description: str = Form(default=""),
-    _=Depends(verify_web_password),
+    _=Depends(get_current_user),
 ):
     original_url = ""
     if url.startswith("email://"):
@@ -390,7 +474,7 @@ async def _run_generation(job_id: str, article_urls: list[str]):
 @app.post("/generate", response_class=HTMLResponse)
 async def generate(
     request: Request,
-    _=Depends(verify_web_password),
+    _=Depends(get_current_user),
 ):
     # Try form data first (from checkbox form in articles.html)
     form = await request.form()
@@ -436,7 +520,7 @@ async def generate(
 
 
 @app.get("/check-status/{job_id}", response_class=HTMLResponse)
-async def check_status(job_id: str, _=Depends(verify_web_password)):
+async def check_status(job_id: str, _=Depends(get_current_user)):
     job = _generation_jobs.get(job_id)
     if not job:
         return "Stato sconosciuto"
@@ -498,33 +582,44 @@ async def download_file(folder: str, filename: str):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse(request, "login.html", {"config": _cfg})
+    has_oauth = bool(_cfg.oauth_google_client_id or _cfg.oauth_github_client_id)
+    has_password = bool(_cfg.web_password)
+    return templates.TemplateResponse(
+        request, "login.html",
+        {"config": _cfg, "has_oauth": has_oauth, "has_password": has_password},
+    )
 
 
 @app.post("/login")
 async def login(
+    request: Request,
     password: str = Form(...),
 ):
+    from podcast_generator.web.auth import create_session_token
+
     if not _cfg.web_password:
         return RedirectResponse("/", status_code=303)
-    import hmac
 
-    if hmac.compare_digest(password, _cfg.web_password):
-        resp = RedirectResponse("/", status_code=303)
-        resp.set_cookie(
-            key="auth_token",
-            value=password,
-            httponly=True,
-            max_age=86400 * 7,
-            samesite="lax",
-        )
-        return resp
-    raise HTTPException(status_code=401, detail="Password errata")
+    if not hmac.compare_digest(password, _cfg.web_password):
+        raise HTTPException(status_code=401, detail="Password errata")
+
+    user = {"id": 0, "email": "admin@local", "name": "Admin", "picture": ""}
+    session_token = create_session_token(user, _cfg.jwt_secret)
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(
+        key="session",
+        value=session_token,
+        httponly=True,
+        max_age=86400 * 7,
+        samesite="lax",
+    )
+    return resp
 
 
 @app.get("/logout")
 async def logout():
     resp = RedirectResponse("/login", status_code=303)
+    resp.delete_cookie("session")
     resp.delete_cookie("auth_token")
     return resp
 
