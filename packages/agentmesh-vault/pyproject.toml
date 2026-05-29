@@ -1,0 +1,14 @@
+[project]
+name = "agentmesh-vault"
+version = "0.1.0"
+description = "IPFS storage layer for AgentMesh"
+authors = [{ name = "AgentMesh Contributors" }]
+requires-python = ">=3.10"
+dependencies = [
+    "agentmesh-core",
+    "aiohttp>=3.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
