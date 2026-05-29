@@ -1,0 +1,16 @@
+[project]
+name = "agentmesh-core"
+version = "0.1.0"
+description = "Core engine for AgentMesh"
+authors = [{ name = "AgentMesh Contributors" }]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "google-genai>=1.14.0",
+    "openai>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+from agentmesh.core import MeshConfig
 
 
-class Settings(BaseSettings):
+class Settings(MeshConfig):
     # === LLM Provider ===
     llm_provider: str = Field(
         default="gemini",

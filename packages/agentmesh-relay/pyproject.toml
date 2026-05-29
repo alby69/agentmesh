@@ -1,0 +1,14 @@
+[project]
+name = "agentmesh-relay"
+version = "0.1.0"
+description = "Nostr relay layer for AgentMesh"
+authors = [{ name = "AgentMesh Contributors" }]
+requires-python = ">=3.10"
+dependencies = [
+    "agentmesh-core",
+    "nostr-sdk>=0.37.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

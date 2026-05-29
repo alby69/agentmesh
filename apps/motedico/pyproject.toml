@@ -1,0 +1,15 @@
+[project]
+name = "motedico"
+version = "0.1.0"
+description = "Decentralized project collaboration and advisory mesh"
+authors = [{ name = "AgentMesh Contributors" }]
+requires-python = ">=3.10"
+dependencies = [
+    "agentmesh-core",
+    "agentmesh-relay",
+    "agentmesh-vault",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
