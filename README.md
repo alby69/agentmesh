@@ -3,7 +3,7 @@
 Pipeline automatica che trasforma newsletter in episodi podcast in **italiano**, pronti da ascoltare.
 
 > [!IMPORTANT]
-> **PodcastGen 3.0 (Versione in Sviluppo):** Stiamo migrando verso un'architettura **Agent-Centric e Decentralizzata** (Nostr + IPFS). Consulta la [Roadmap Tecnica v3.0](docs/v3-agent-centric-roadmap.md) per i dettagli dell'implementazione P2P.
+> **PodcastGen 3.0 (Versione in Sviluppo):** Stiamo migrando verso un'architettura **Agent-Centric e Decentralizzata** (Nostr + IPFS). Consulta [docs/v3-agent-centric-roadmap.md](docs/v3-agent-centric-roadmap.md) per i dettagli.
 
 ## Quick Start
 
