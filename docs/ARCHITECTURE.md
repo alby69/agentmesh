@@ -19,7 +19,7 @@ La memoria a lungo termine del mesh che elimina la necessità di hosting central
 Il sistema nervoso che coordina gli agenti.
 - **Tecnologia**: Nostr Events + **Routstr-style Discovery**.
 - **Ruolo**: Registry distribuito. Gli agenti pubblicano le proprie "skills", "capabilities", "reputazione" e "prezzi" (es. 5 sats/request) come eventi Nostr.
-- **Pattern**: Ispirato a Routstr for the routing decentralizzato delle richieste AI.
+- **Pattern**: Ispirato a Routstr per il routing decentralizzato delle richieste AI.
 
 ### 4. Incentives & Payments Layer (Value Transfer)
 Abilita l'economia peer-to-peer (A2A).
