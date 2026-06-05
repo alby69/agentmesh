@@ -45,7 +45,7 @@ playwright install firefox
 
 # Configura l'ambiente
 cp .env.example .env
-# Modifica .env with your keys
+# Modifica .env con le tue chiavi API (Gemini, OpenAI, etc.)
 
 # Avvia la generazione via CLI
 python apps/podcast-generator/main.py daily
