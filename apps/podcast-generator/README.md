@@ -20,6 +20,12 @@ cp .env.example .env
 - **TTS Caching:** Persistent audio storage to avoid redundant synthesis costs.
 - **AgentMesh Core Integration:** Full support for Workflow and Project agents for advanced coordination.
 
+## Decentralized Economy v3.5
+
+- **Knowledge Agent:** Managing distributed memory and shared knowledge graphs.
+- **Reputation System:** Web-of-Trust (WoT) based scoring for mesh agents, visible in discovery.
+- **Micropayments (PoC):** Integration of `WalletAgent` for Lightning/Cashu task settlement.
+
 ### CLI
 ```bash
 python main.py daily

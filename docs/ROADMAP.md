@@ -43,15 +43,15 @@ Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
 
 ---
 
-## v3.5 — Knowledge Mesh & Economy 💸
+## v3.5 — Knowledge Mesh & Economy (Completed) 💸
 
 ### Milestone 1: Knowledge & Reputation
-- [ ] **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr events.
-- [ ] **Reputation System**: Web-of-Trust based scores for mesh agents.
+- [x] **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr events.
+- [x] **Reputation System**: Web-of-Trust based scores for mesh agents.
 
 ### Milestone 2: Agentic Economy
-- [ ] **agentstr-sdk Integration**: Professional A2A coordination and MCP compatibility.
-- [ ] **Micropayments Layer**: Lightning Network and Cashu integration for pay-per-task execution.
+- [x] **agentstr-sdk Integration**: Professional A2A coordination and MCP compatibility.
+- [x] **Micropayments Layer**: Lightning Network and Cashu integration for pay-per-task execution.
 
 ---
 

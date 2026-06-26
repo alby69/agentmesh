@@ -240,7 +240,8 @@ async def index(request: Request, user: dict = Depends(get_current_user)):
             "episodes": episodes,
             "config": _cfg,
             "user": user,
-            "agents_info": agents_info
+            "agents_info": agents_info,
+            "wallet_balance": agents.wallet.balance_sats if hasattr(agents, 'wallet') else 0
         }
     )
 
@@ -249,17 +250,28 @@ async def index(request: Request, user: dict = Depends(get_current_user)):
 async def v3_discover(request: Request, _=Depends(get_current_user)):
     agents = get_agents(_cfg)
     try:
-        podcasts = await agents.social.discover_podcasts()
+        # v3.5: KnowledgeAgent manages discovery and reputation
+        podcasts = await agents.network.discover_podcasts() if hasattr(agents.network, 'discover_podcasts') else []
         if not podcasts:
             return HTMLResponse("<div class='text-slate-400 text-xs italic'>Nessun podcast trovato nelle ultime 24 ore.</div>")
 
         items = ""
         for p in podcasts:
+            # Get reputation score from KnowledgeAgent
+            rep = await agents.knowledge.get_reputation(p['pubkey'])
+            score_color = "text-green-400" if rep.score > 0.7 else "text-yellow-400" if rep.score > 0.4 else "text-slate-400"
+
             items += f"""
             <div class="p-3 bg-slate-700/30 rounded-xl border border-slate-600 mb-2">
-                <div class="font-bold text-xs truncate">{p['title']}</div>
+                <div class="flex justify-between items-start mb-1">
+                    <div class="font-bold text-xs truncate flex-1">{p['title']}</div>
+                    <div class="text-[10px] font-mono {score_color} ml-2">Rep: {rep.score:.1f}</div>
+                </div>
                 <div class="text-[10px] text-slate-400 truncate">by {p['pubkey'][:10]}...</div>
-                <a href="{p['url']}" target="_blank" class="text-blue-400 text-[10px] hover:underline">Ascolta su IPFS</a>
+                <div class="flex justify-between items-center mt-2">
+                    <a href="{p['url']}" target="_blank" class="text-blue-400 text-[10px] hover:underline">Ascolta</a>
+                    <button class="text-[9px] bg-slate-600 px-2 py-0.5 rounded text-white hover:bg-slate-500">Zap</button>
+                </div>
             </div>
             """
         return HTMLResponse(items)
