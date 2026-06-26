@@ -9,6 +9,9 @@ dependencies = [
     "aiohttp>=3.9.0",
 ]
 
+[tool.uv.sources]
+agentmesh-core = { workspace = true }
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
