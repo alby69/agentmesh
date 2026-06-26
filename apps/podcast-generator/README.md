@@ -13,6 +13,19 @@ cp .env.example .env
 # Edit .env with your GEMINI_API_KEY and newsletter source
 ```
 
+## Features v3.1
+
+- **Multi-speaker Dialogue:** Generate NotebookLM-style conversations between two host voices.
+- **Integrated Scheduling:** Automated daily (8:00 AM) and weekly (Mon 9:00 AM) generation via APScheduler.
+- **TTS Caching:** Persistent audio storage to avoid redundant synthesis costs.
+- **AgentMesh Core Integration:** Full support for Workflow and Project agents for advanced coordination.
+
+## Decentralized Economy v3.5
+
+- **Knowledge Agent:** Managing distributed memory and shared knowledge graphs.
+- **Reputation System:** Web-of-Trust (WoT) based scoring for mesh agents, visible in discovery.
+- **Micropayments (PoC):** Integration of `WalletAgent` for Lightning/Cashu task settlement.
+
 ### CLI
 ```bash
 python main.py daily

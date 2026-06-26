@@ -29,6 +29,7 @@ from podcast_generator.web.auth import (
     init_oauth, create_session_token, _oauth,
 )
 from podcast_generator.agents.manager import get_agents
+from podcast_generator.scheduler import MeshScheduler
 
 templates = Jinja2Templates(
     directory=str(Path(__file__).parent / "templates")
@@ -50,9 +51,18 @@ async def _lifespan(app):
     (_cfg.output_dir / "daily").mkdir(parents=True, exist_ok=True)
     (_cfg.output_dir / "weekly").mkdir(parents=True, exist_ok=True)
     init_oauth(_cfg)
+
+    # Initialize Agents
     agents = get_agents(_cfg)
     await agents.start()
+
+    # Initialize Scheduler
+    scheduler = MeshScheduler(_cfg)
+    await scheduler.start()
+
     yield
+
+    await scheduler.stop()
     await agents.stop()
 
 
@@ -230,7 +240,8 @@ async def index(request: Request, user: dict = Depends(get_current_user)):
             "episodes": episodes,
             "config": _cfg,
             "user": user,
-            "agents_info": agents_info
+            "agents_info": agents_info,
+            "wallet_balance": agents.wallet.balance_sats if hasattr(agents, 'wallet') else 0
         }
     )
 
@@ -239,17 +250,28 @@ async def index(request: Request, user: dict = Depends(get_current_user)):
 async def v3_discover(request: Request, _=Depends(get_current_user)):
     agents = get_agents(_cfg)
     try:
-        podcasts = await agents.social.discover_podcasts()
+        # v3.5: KnowledgeAgent manages discovery and reputation
+        podcasts = await agents.network.discover_podcasts() if hasattr(agents.network, 'discover_podcasts') else []
         if not podcasts:
             return HTMLResponse("<div class='text-slate-400 text-xs italic'>Nessun podcast trovato nelle ultime 24 ore.</div>")
 
         items = ""
         for p in podcasts:
+            # Get reputation score from KnowledgeAgent
+            rep = await agents.knowledge.get_reputation(p['pubkey'])
+            score_color = "text-green-400" if rep.score > 0.7 else "text-yellow-400" if rep.score > 0.4 else "text-slate-400"
+
             items += f"""
             <div class="p-3 bg-slate-700/30 rounded-xl border border-slate-600 mb-2">
-                <div class="font-bold text-xs truncate">{p['title']}</div>
+                <div class="flex justify-between items-start mb-1">
+                    <div class="font-bold text-xs truncate flex-1">{p['title']}</div>
+                    <div class="text-[10px] font-mono {score_color} ml-2">Rep: {rep.score:.1f}</div>
+                </div>
                 <div class="text-[10px] text-slate-400 truncate">by {p['pubkey'][:10]}...</div>
-                <a href="{p['url']}" target="_blank" class="text-blue-400 text-[10px] hover:underline">Ascolta su IPFS</a>
+                <div class="flex justify-between items-center mt-2">
+                    <a href="{p['url']}" target="_blank" class="text-blue-400 text-[10px] hover:underline">Ascolta</a>
+                    <button class="text-[9px] bg-slate-600 px-2 py-0.5 rounded text-white hover:bg-slate-500">Zap</button>
+                </div>
             </div>
             """
         return HTMLResponse(items)
@@ -551,9 +573,13 @@ def _lookup_titles(urls: list[str]) -> list[str]:
     return [url_to_title.get(u, "") for u in urls]
 
 
-async def _run_generation(job_id: str, article_urls: list[str]):
+async def _run_generation(job_id: str, article_urls: list[str], podcast_format: str = "monologue"):
     try:
-        gen = PodcastGenerator(config=_cfg)
+        # Create a temporary config for this job
+        job_cfg = _cfg.model_copy()
+        job_cfg.podcast_format = podcast_format
+
+        gen = PodcastGenerator(config=job_cfg)
         titles = _lookup_titles(article_urls)
         episode = await gen.build_from_urls(article_urls, titles=titles)
 
@@ -602,6 +628,7 @@ async def generate(
     form = await request.form()
     article_urls: list[str] = form.getlist("article_urls")
     newsletter_url: str = form.get("newsletter_url", "")
+    podcast_format: str = form.get("podcast_format", "monologue")
 
     # Fall back to JSON body (from article detail hx-vals)
     if not article_urls:
@@ -609,6 +636,7 @@ async def generate(
             body = await request.json()
             article_urls = body.get("article_urls", [])
             newsletter_url = body.get("newsletter_url", "")
+            podcast_format = body.get("podcast_format", podcast_format)
         except Exception:
             raise HTTPException(status_code=400, detail="article_urls is required")
 
@@ -619,7 +647,7 @@ async def generate(
     _generation_jobs[job_id] = GenerationJob(
         job_id=job_id, status=JobStatus.PROCESSING
     )
-    asyncio.create_task(_run_generation(job_id, article_urls))
+    asyncio.create_task(_run_generation(job_id, article_urls, podcast_format=podcast_format))
 
     return HTMLResponse(
         content=f"""
@@ -726,6 +754,18 @@ async def login(
         raise HTTPException(status_code=401, detail="Password errata")
 
     user = {"id": 0, "email": "admin@local", "name": "Admin", "picture": ""}
+
+    if not _cfg.oauth_google_client_id and not _cfg.oauth_github_client_id:
+        resp = RedirectResponse("/", status_code=303)
+        resp.set_cookie(
+            key="auth_token",
+            value=password,
+            httponly=True,
+            max_age=86400 * 7,
+            samesite="lax",
+        )
+        return resp
+
     session_token = create_session_token(user, _cfg.jwt_secret)
     resp = RedirectResponse("/", status_code=303)
     resp.set_cookie(

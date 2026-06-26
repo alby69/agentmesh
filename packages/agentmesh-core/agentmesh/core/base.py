@@ -40,6 +40,19 @@ class BaseAgent(ABC):
         """Emit an event that other agents or the system might be interested in."""
         self.logger.info(f"Event Emitted: {event_type} - {data}")
 
+    # Agentic Economy (v3.5)
+    async def request_payment(self, amount_sats: int, description: str) -> str:
+        """Generates a payment request (Lightning/Cashu)."""
+        self.logger.info(f"Requesting payment of {amount_sats} sats for: {description}")
+        # Integration point for agentstr-sdk / LNURL-pay
+        return f"lnbc{amount_sats}mockinvoice..."
+
+    async def verify_payment(self, payment_hash: str) -> bool:
+        """Verifies if a payment has been settled."""
+        self.logger.info(f"Verifying payment: {payment_hash}")
+        # Check against Lightning Node or Cashu Mint
+        return True
+
     async def handle_message(self, message: AgentMessage):
         """Callback to handle incoming AgentMessages."""
         self.logger.info(f"Received message of type {message.message_type} from {message.sender}")

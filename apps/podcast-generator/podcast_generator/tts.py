@@ -65,10 +65,14 @@ async def generate_audio(
     text: str,
     output_path: str | Path,
 ) -> Path:
+    # Handle multi-speaker dialogue
+    if cfg.podcast_format == "dialogue" and ("[Host]:" in text or "[Guest]:" in text):
+        return await _generate_dialogue_audio(cfg, text, output_path)
+
     # Infrastructure v3.1: TTS Caching
-    voice = cfg.tts_voice
+    voice = cfg.host_voice or cfg.tts_voice
     if cfg.tts_provider == "elevenlabs" and cfg.elevenlabs_api_key:
-        voice = cfg.elevenlabs_voice or cfg.tts_voice
+        voice = cfg.elevenlabs_voice or voice
 
     text_hash = get_text_hash(text, voice)
     cache_path = cfg.output_dir / "cache" / "tts" / f"{text_hash}.mp3"
@@ -93,3 +97,59 @@ async def generate_audio(
     shutil.copy(final_path, cache_path)
 
     return final_path
+
+
+async def _generate_dialogue_audio(
+    cfg: Settings,
+    text: str,
+    output_path: str | Path,
+) -> Path:
+    """Parses dialogue and generates multi-speaker audio."""
+    from podcast_generator.audio import merge_audio_files
+    import re
+
+    # Split text into turns
+    turns = re.split(r"(\[(?:Host|Guest)\]:)", text)
+    processed_turns = []
+    current_speaker = "Host"
+
+    for i in range(1, len(turns), 2):
+        speaker_tag = turns[i]
+        content = turns[i+1].strip()
+        if not content:
+            continue
+
+        current_speaker = "Host" if "Host" in speaker_tag else "Guest"
+        processed_turns.append((current_speaker, content))
+
+    if not processed_turns:
+        # Fallback to monologue if parsing fails
+        cfg.podcast_format = "monologue"
+        return await generate_audio(cfg, text, output_path)
+
+    temp_paths = []
+    try:
+        for i, (speaker, content) in enumerate(processed_turns):
+            voice = cfg.host_voice if speaker == "Host" else cfg.guest_voice
+            if cfg.tts_provider == "elevenlabs" and cfg.elevenlabs_api_key:
+                voice = (cfg.elevenlabs_voice if speaker == "Host"
+                         else (cfg.elevenlabs_guest_voice or cfg.elevenlabs_voice))
+
+            turn_hash = get_text_hash(content, voice)
+            turn_path = cfg.output_dir / "cache" / "tts" / f"{turn_hash}.mp3"
+
+            if not turn_path.exists():
+                turn_path.parent.mkdir(parents=True, exist_ok=True)
+                if cfg.tts_provider == "elevenlabs" and cfg.elevenlabs_api_key:
+                    await generate_audio_elevenlabs(cfg.elevenlabs_api_key, content, voice, turn_path)
+                else:
+                    await generate_audio_edge(content, voice, turn_path)
+
+            temp_paths.append(turn_path)
+
+        # Merge all turns
+        merge_audio_files(temp_paths, output_path)
+    except Exception as e:
+        raise TTSError(f"Dialogue synthesis error: {e}") from e
+
+    return Path(output_path)

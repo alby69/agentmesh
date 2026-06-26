@@ -25,33 +25,33 @@ Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
 
 ---
 
-## v3.1 — Scaling & Advanced Coordination (Current Phase)
+## v3.1 — Scaling & Advanced Coordination (Completed) 🚀
 
-### Strategic Agents (High Priority)
-- [ ] **Workflow Agent**: Manages complex task sequences (fetch → summarize → translate → script → audio → publish). Resolves dependencies using the Registry.
-- [ ] **Project Agent**: Represents an autonomous project. Maintains state, coordinates members (human/agent), and manages project memory on IPFS.
+### Strategic Agents
+- [x] **Workflow Agent**: Manages complex task sequences (fetch → summarize → translate → script → audio → publish). Resolves dependencies using the Registry.
+- [x] **Project Agent**: Represents an autonomous project. Maintains state, coordinates members (human/agent), and manages project memory on IPFS.
 
 ### Product Features (UX & Quality)
-- [ ] **Multi-speaker**: Dialogue between host and guest.
-- [ ] **NotebookLM style**: Deep "discussion" generation between two host voices.
+- [x] **Multi-speaker**: Dialogue between host and guest.
+- [x] **NotebookLM style**: Deep "discussion" generation between two host voices.
 - [ ] **Long-form Support**: Handling episodes >60 min with automatic part splitting.
 
 ### Infrastructure Features (Performance & Scaling)
-- [ ] **TTS Caching**: Content-addressed audio storage to avoid redundant synthesis (Hash-based lookup).
-- [ ] **Reactive Message Bus**: Agents actively listen for Nostr events tagged with their pubkey to trigger tasks.
-- [ ] **Integrated Scheduling**: Internal agenda (APScheduler) for automated tasks.
+- [x] **TTS Caching**: Content-addressed audio storage to avoid redundant synthesis (Hash-based lookup).
+- [x] **Reactive Message Bus**: Agents actively listen for Nostr events tagged with their pubkey to trigger tasks.
+- [x] **Integrated Scheduling**: Internal agenda (APScheduler) for automated tasks.
 
 ---
 
-## v3.5 — Knowledge Mesh & Economy 💸
+## v3.5 — Knowledge Mesh & Economy (Completed) 💸
 
 ### Milestone 1: Knowledge & Reputation
-- [ ] **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr events.
-- [ ] **Reputation System**: Web-of-Trust based scores for mesh agents.
+- [x] **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr events.
+- [x] **Reputation System**: Web-of-Trust based scores for mesh agents.
 
 ### Milestone 2: Agentic Economy
-- [ ] **agentstr-sdk Integration**: Professional A2A coordination and MCP compatibility.
-- [ ] **Micropayments Layer**: Lightning Network and Cashu integration for pay-per-task execution.
+- [x] **agentstr-sdk Integration**: Professional A2A coordination and MCP compatibility.
+- [x] **Micropayments Layer**: Lightning Network and Cashu integration for pay-per-task execution.
 
 ---
 
