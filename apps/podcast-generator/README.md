@@ -1,8 +1,8 @@
 # Podcast Generator
 
-> **Nota:** Questo progetto è ora parte dell'ecosistema [AgentMesh](../../README.md) come applicazione di riferimento per l'architettura decentralizzata.
+> **Note:** This project is now part of the [AgentMesh](../../README.md) ecosystem as the reference application for decentralized architecture.
 
-Pipeline automatica che trasforma newsletter in episodi podcast in **italiano**, pronti da ascoltare.
+An automatic pipeline that transforms newsletters into podcast episodes in **Italian**, ready for listening.
 
 ## Quick Start
 
@@ -10,33 +10,37 @@ Pipeline automatica che trasforma newsletter in episodi podcast in **italiano**,
 uv sync
 playwright install firefox
 cp .env.example .env
-# modifica .env con la tua GEMINI_API_KEY e la sorgente newsletter
+# Edit .env with your GEMINI_API_KEY and newsletter source
+```
 
-# CLI
+### CLI
+```bash
 python main.py daily
+```
 
-# Web App
+### Web App
+```bash
 uvicorn podcast_generator.web.app:app --reload
 ```
 
-## Architettura v3.0 (AgentMesh)
+## v3.0 Architecture (AgentMesh)
 
-PodcastGen utilizza gli agenti di AgentMesh per gestire il flusso di lavoro:
+PodcastGen utilizes AgentMesh agents to manage the workflow:
 
-- **Content Agent:** Gestisce lo scraping e la sintesi AI.
-- **Storage Agent:** Gestisce l'archiviazione distribuita su **IPFS**.
-- **Network Agent:** Gestisce l'identità e la comunicazione tramite **Nostr**.
+- **Content Agent:** Handles scraping and AI synthesis.
+- **Storage Agent:** Handles distributed storage on **IPFS**.
+- **Network Agent:** Handles identity and communication via **Nostr**.
 
 ```mermaid
 graph TD
-    A[Sorgenti] --> B(Content Agent)
+    A[Sources] --> B(Content Agent)
     B --> C(Storage Agent - IPFS)
     C --> D(Network Agent - Nostr)
     D --> E[Relays & Peers]
 ```
 
-## Documentazione
+## Documentation
 
-- [Guida all'uso della Web App](../../docs/web-app.md)
-- [Uso come Libreria Python](../../docs/library.md)
-- [Roadmap v3.0](../../docs/v3-agent-centric-roadmap.md)
+- [Web App Usage Guide](../../docs/web-app.md)
+- [Python Library Usage Guide](../../docs/library.md)
+- [Roadmap v3.0](../../docs/ROADMAP.md)
