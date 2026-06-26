@@ -1,49 +1,60 @@
-# AgentMesh: Architettura Tecnica
+# AgentMesh: Technical Architecture
 
-AgentMesh adotta un'architettura a strati (layers) per separare le responsabilità, garantire la massima decentralizzazione e abilitare un'economia agentica autonoma.
+AgentMesh adopts a layered architecture to separate responsibilities, ensure maximum decentralization, and enable an autonomous agentic economy.
 
 ## 1. Network Layer (P2P Mesh)
-Il fondamento fisico e logico del sistema.
-- **Tecnologia**: Nostr (NIP-01, NIP-04, NIP-94).
-- **Ruolo**: Peer discovery, NAT traversal (via relay), trasporto eventi criptati.
-- **Evoluzione**: Investigazione di `libp2p` per comunicazioni gossip mesh pure in scenari dove i relay Nostr non sono sufficienti.
+The physical and logical foundation of the system.
+- **Technology**: Nostr (NIP-01, NIP-04, NIP-94).
+- **Role**: Peer discovery, NAT traversal (via relays), encrypted event transport.
+- **Evolution**: Investigating `libp2p` for pure gossip mesh communications in scenarios where Nostr relays are insufficient.
 
 ## 2. Storage Layer (Distributed Storage)
-La memoria a lungo termine del mesh.
-- **Tecnologia**: IPFS (InterPlanetary File System).
-- **Ruolo**: Archiviazione content-addressed. Ogni file (audio, script, metadati) è identificato da un CID (Content Identifier).
-- **Deduplicazione**: Se più agenti generano lo stesso contenuto, lo spazio occupato sulla rete non aumenta.
+The long-term memory of the mesh.
+- **Technology**: IPFS (InterPlanetary File System).
+- **Role**: Content-addressed storage. Every file (audio, script, metadata) is identified by a CID (Content Identifier).
+- **Deduplication**: If multiple agents generate the same content, the space occupied on the network does not increase.
 
 ## 3. Coordination & Discovery Layer (Event Bus)
-Il sistema nervoso che coordina gli agenti e permette la scoperta di nuove capacità.
-- **Tecnologia**: Nostr Events + **Routstr-style Discovery**.
-- **Ruolo**: Pubblicazione di task, annunci di nuovi contenuti, discovery di agenti specializzati (registry distribuito).
-- **Registry**: Gli agenti pubblicano le proprie "skills", "capabilities" e "prezzi" come eventi Nostr.
+The nervous system that coordinates agents and allows the discovery of new capabilities.
+- **Technology**: Nostr Events + **Routstr-style Discovery**.
+- **Role**: Task publishing, content announcements, discovery of specialized agents (distributed registry).
+- **Registry**: Agents publish their "skills", "capabilities", and "prices" as Nostr events.
 
 ## 4. Incentives & Payments Layer (Value Transfer)
-Abilita l'economia peer-to-peer tra agenti (A2A) e tra utenti e agenti.
-- **Tecnologia**: **Lightning Network** + **Cashu** (ecash).
-- **Ruolo**: Micropagamenti per inferenza AI, storage pinning, o task completati.
-- **Modello**: Pay-per-request senza account centralizzati o KYC.
+Enables peer-to-peer economy between agents (A2A) and between users and agents.
+- **Technology**: **Lightning Network** + **Cashu** (ecash).
+- **Role**: Micropayments for AI inference, storage pinning, or completed tasks.
+- **Model**: Pay-per-request without centralized accounts or KYC.
 
 ## 5. Knowledge Layer (Semantic Memory)
-Lo strato che rende gli agenti "intelligenti" rispetto al contesto del mesh.
-- **Tecnologia**: Vector Databases (locali), RAG (Retrieval-Augmented Generation), CRDT (Conflict-free Replicated Data Types).
-- **Ruolo**: Mantenere una base di conoscenza condivisa e consistente tra i peer senza un database centrale.
+The layer that makes agents "intelligent" relative to the mesh context.
+- **Technology**: Vector Databases (local), RAG (Retrieval-Augmented Generation), CRDT (Conflict-free Replicated Data Types).
+- **Role**: Maintaining a shared and consistent knowledge base among peers without a central database.
 
 ## 6. Agent Layer (Autonomous Workers)
-Dove risiede la logica applicativa e l'interazione umana.
-- **Tecnologia**: Python, LLM (Gemini/OpenAI), **MCP (Model Context Protocol)**, **agentstr-sdk**.
-- **Ruolo**: Esecuzione dei task (scraping, traduzione, sintesi vocale).
-- **A2A & MCP**: Gli agenti sono compatibili con lo standard MCP per interagire con tool esterni e usano protocolli Agent-to-Agent per delegare sotto-task.
+Where application logic and human interaction reside.
+- **Technology**: Python, LLMs (Gemini/OpenAI), **MCP (Model Context Protocol)**, **agentstr-sdk**.
+- **Role**: Task execution (scraping, translation, voice synthesis).
+- **A2A & MCP**: Agents are compatible with the MCP standard to interact with external tools and use Agent-to-Agent protocols to delegate sub-tasks.
 
 ---
 
-## Esempio di Flusso Economico-Operativo
+## Economic-Operational Flow Example
 
-1. **User Agent** cerca un "Podcast Generator" sul Discovery Layer (Nostr).
-2. Trova il **Content Agent** di PodcastGen che offre il servizio a "10 sats/episodio".
-3. Lo **User Agent** invia un pagamento (Lightning/Cashu) e la richiesta.
-4. Il **Content Agent** esegue il task, salva su IPFS (**Storage Layer**) e pubblica il CID.
-5. Il **Content Agent** paga a sua volta un **Inference Provider** (via Routstr) per la traduzione LLM.
-6. Il risultato viene consegnato allo **User Agent** via Nostr.
+1. **User Agent** searches for a "Podcast Generator" on the Discovery Layer (Nostr).
+2. It finds the **Content Agent** of PodcastGen offering the service for "10 sats/episode".
+3. The **User Agent** sends a payment (Lightning/Cashu) and the request.
+4. The **Content Agent** executes the task, saves it to IPFS (**Storage Layer**), and publishes the CID.
+5. The **Content Agent** in turn pays an **Inference Provider** (via Routstr) for the LLM translation.
+6. The result is delivered to the **User Agent** via Nostr.
+
+---
+
+## Agentic Infrastructure
+
+Following the vision of Andrej Karpathy, the system is an orchestra of coordinated agents:
+
+1.  **Network Agent:** Handles connection to Nostr relays and publication of standardized events (NIP-94).
+2.  **Storage Agent:** Manages data integrity and availability via IPFS, with support for Pinata and local nodes.
+3.  **Content Agent:** The creative agent. Performs fetching, translation (LLM), and synthesis (TTS).
+4.  **Social Agent:** Manages the community feed, likes, and reactions based on Nostr events.
