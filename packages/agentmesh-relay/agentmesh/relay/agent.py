@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from typing import Optional, List, Dict, Any, Callable
 from agentmesh.core import BaseAgent, MeshConfig
 from agentmesh.core.models import AgentCapability, AgentMessage
@@ -15,16 +16,28 @@ try:
         Kind,
         UnsignedEvent,
         Nip44,
+        HandleNotification,
     )
 except ImportError:
     Client = None
     Tag = None
     Kind = None
+    HandleNotification = object
 
 # Custom Kind for Agent Registry (inspired by NIP-31 but focused on AgentMesh)
 KIND_AGENT_REGISTRY = 30311
 # Kind for encrypted Agent Messages
 KIND_AGENT_MESSAGE = 29001
+
+class MeshNotificationHandler(HandleNotification):
+    def __init__(self, agent: 'NostrAgent'):
+        self.agent = agent
+
+    async def handle(self, relay_url: str, event: Event):
+        await self.agent._process_incoming_event(event)
+
+    async def handle_msg(self, relay_url: str, msg: Any):
+        pass
 
 class NostrAgent(BaseAgent):
     """Handles P2P identity and communication using the Nostr protocol."""
@@ -43,7 +56,7 @@ class NostrAgent(BaseAgent):
 
         self.client = Client(self.keys)
         self.relays = relays or ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.snort.social"]
-        self._message_handlers: Dict[str, List[Callable]] = {}
+        self._listening_task: Optional[asyncio.Task] = None
 
     async def start(self):
         if not self.client:
@@ -55,9 +68,39 @@ class NostrAgent(BaseAgent):
         await self.client.connect()
         self.logger.info(f"Connected to Nostr as {self.keys.public_key().to_bech32()}")
 
+        # Start listening for messages addressed to this agent
+        await self._start_listening()
+
     async def stop(self):
+        if self._listening_task:
+            self._listening_task.cancel()
         if self.client:
             await self.client.disconnect()
+
+    async def _start_listening(self):
+        """Sets up a subscription for incoming AgentMessages."""
+        pubkey = self.keys.public_key().to_hex()
+        # Filter for Agent Messages (Kind 29001) addressed to this agent (p-tag)
+        # Also listen for broadcast messages (no p-tag, handled by client logic)
+        msg_filter = Filter().kind(KIND_AGENT_MESSAGE).pubkey(pubkey)
+        await self.client.subscribe([msg_filter])
+
+        self.logger.info(f"Subscribed to AgentMessages for {pubkey}")
+
+        # In a real scenario, we'd use the HandleNotification callback
+        # For this implementation, we'll poll for now or use the SDK's built-in event loop if available
+        # Note: nostr-sdk-python handles notifications via a separate thread or async task
+        self.client.handle_notifications(MeshNotificationHandler(self))
+
+    async def _process_incoming_event(self, event: Event):
+        """Processes a received Nostr event and converts it to an AgentMessage."""
+        if event.kind() == KIND_AGENT_MESSAGE:
+            try:
+                msg = AgentMessage.model_validate_json(event.content())
+                self.logger.info(f"Received AgentMessage: {msg.id} from {msg.sender}")
+                await self.handle_message(msg)
+            except Exception as e:
+                self.logger.warning(f"Failed to parse incoming AgentMessage: {e}")
 
     async def publish_event(self, kind: int, content: str, tags: List[Tag] = None):
         if not self.client:
@@ -85,10 +128,6 @@ class NostrAgent(BaseAgent):
         tags = []
 
         if message.receiver:
-            # Encrypted message (NIP-44)
-            # In a real scenario, we'd need to fetch the receiver's public key object
-            # and use nip44 encrypt. For this PoC, we'll store as plaintext in kind 29001
-            # with a receiver tag.
             tags.append(Tag.parse(["p", message.receiver]))
 
         return await self.publish_event(KIND_AGENT_MESSAGE, content, tags)

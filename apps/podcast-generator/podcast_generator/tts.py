@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Optional
 
@@ -7,6 +8,11 @@ import edge_tts
 
 from podcast_generator.config import Settings
 from podcast_generator.exceptions import TTSError
+
+
+def get_text_hash(text: str, voice: str) -> str:
+    """Generates a unique hash for a text/voice combination."""
+    return hashlib.sha256(f"{voice}:{text}".encode()).hexdigest()
 
 
 async def generate_audio_edge(
@@ -59,9 +65,31 @@ async def generate_audio(
     text: str,
     output_path: str | Path,
 ) -> Path:
+    # Infrastructure v3.1: TTS Caching
+    voice = cfg.tts_voice
     if cfg.tts_provider == "elevenlabs" and cfg.elevenlabs_api_key:
         voice = cfg.elevenlabs_voice or cfg.tts_voice
-        return await generate_audio_elevenlabs(
+
+    text_hash = get_text_hash(text, voice)
+    cache_path = cfg.output_dir / "cache" / "tts" / f"{text_hash}.mp3"
+
+    if cache_path.exists():
+        import shutil
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(cache_path, output_path)
+        return Path(output_path)
+
+    # Actual generation
+    if cfg.tts_provider == "elevenlabs" and cfg.elevenlabs_api_key:
+        final_path = await generate_audio_elevenlabs(
             cfg.elevenlabs_api_key, text, voice, output_path
         )
-    return await generate_audio_edge(text, cfg.tts_voice, output_path)
+    else:
+        final_path = await generate_audio_edge(text, voice, output_path)
+
+    # Store in cache
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    import shutil
+    shutil.copy(final_path, cache_path)
+
+    return final_path
