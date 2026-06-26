@@ -37,8 +37,11 @@ class Settings(MeshConfig):
         description="TTS provider: edge, elevenlabs",
     )
     tts_voice: str = Field(default="it-IT-GiuseppeNeural")
+    host_voice: str = Field(default="it-IT-GiuseppeNeural")
+    guest_voice: str = Field(default="it-IT-ElsaNeural")
     elevenlabs_api_key: str = Field(default="")
     elevenlabs_voice: str = Field(default="")
+    elevenlabs_guest_voice: str = Field(default="")
 
     # === Newsletter Source ===
     source_name: str = Field(default="newsletter")
@@ -69,6 +72,7 @@ class Settings(MeshConfig):
     max_episode_minutes: int = Field(default=60, ge=1)
     output_dir: Path = Field(default=Path("./output"))
     use_web_search: bool = Field(default=False)
+    podcast_format: str = Field(default="monologue", description="monologue or dialogue")
 
     # === Intro / Outro ===
     intro_path: Optional[Path] = Field(default=None)

@@ -29,6 +29,7 @@ from podcast_generator.web.auth import (
     init_oauth, create_session_token, _oauth,
 )
 from podcast_generator.agents.manager import get_agents
+from podcast_generator.scheduler import MeshScheduler
 
 templates = Jinja2Templates(
     directory=str(Path(__file__).parent / "templates")
@@ -50,9 +51,18 @@ async def _lifespan(app):
     (_cfg.output_dir / "daily").mkdir(parents=True, exist_ok=True)
     (_cfg.output_dir / "weekly").mkdir(parents=True, exist_ok=True)
     init_oauth(_cfg)
+
+    # Initialize Agents
     agents = get_agents(_cfg)
     await agents.start()
+
+    # Initialize Scheduler
+    scheduler = MeshScheduler(_cfg)
+    await scheduler.start()
+
     yield
+
+    await scheduler.stop()
     await agents.stop()
 
 
@@ -551,9 +561,13 @@ def _lookup_titles(urls: list[str]) -> list[str]:
     return [url_to_title.get(u, "") for u in urls]
 
 
-async def _run_generation(job_id: str, article_urls: list[str]):
+async def _run_generation(job_id: str, article_urls: list[str], podcast_format: str = "monologue"):
     try:
-        gen = PodcastGenerator(config=_cfg)
+        # Create a temporary config for this job
+        job_cfg = _cfg.model_copy()
+        job_cfg.podcast_format = podcast_format
+
+        gen = PodcastGenerator(config=job_cfg)
         titles = _lookup_titles(article_urls)
         episode = await gen.build_from_urls(article_urls, titles=titles)
 
@@ -602,6 +616,7 @@ async def generate(
     form = await request.form()
     article_urls: list[str] = form.getlist("article_urls")
     newsletter_url: str = form.get("newsletter_url", "")
+    podcast_format: str = form.get("podcast_format", "monologue")
 
     # Fall back to JSON body (from article detail hx-vals)
     if not article_urls:
@@ -609,6 +624,7 @@ async def generate(
             body = await request.json()
             article_urls = body.get("article_urls", [])
             newsletter_url = body.get("newsletter_url", "")
+            podcast_format = body.get("podcast_format", podcast_format)
         except Exception:
             raise HTTPException(status_code=400, detail="article_urls is required")
 
@@ -619,7 +635,7 @@ async def generate(
     _generation_jobs[job_id] = GenerationJob(
         job_id=job_id, status=JobStatus.PROCESSING
     )
-    asyncio.create_task(_run_generation(job_id, article_urls))
+    asyncio.create_task(_run_generation(job_id, article_urls, podcast_format=podcast_format))
 
     return HTMLResponse(
         content=f"""
@@ -726,6 +742,18 @@ async def login(
         raise HTTPException(status_code=401, detail="Password errata")
 
     user = {"id": 0, "email": "admin@local", "name": "Admin", "picture": ""}
+
+    if not _cfg.oauth_google_client_id and not _cfg.oauth_github_client_id:
+        resp = RedirectResponse("/", status_code=303)
+        resp.set_cookie(
+            key="auth_token",
+            value=password,
+            httponly=True,
+            max_age=86400 * 7,
+            samesite="lax",
+        )
+        return resp
+
     session_token = create_session_token(user, _cfg.jwt_secret)
     resp = RedirectResponse("/", status_code=303)
     resp.set_cookie(

@@ -33,6 +33,14 @@ class WorkflowAgent(BaseAgent):
 
         results = {}
         for step in steps:
+            # Check if previous results are needed for current step params
+            # Basic template substitution
+            for key, value in step.params.items():
+                if isinstance(value, str) and value.startswith("{{") and value.endswith("}}"):
+                    prev_step_name = value[2:-2].strip()
+                    if prev_step_name in results:
+                        step.params[key] = results[prev_step_name]
+
             self.logger.info(f"Processing step: {step.name} (requires: {step.capability_required})")
 
             # 1. Find agents with the required capability

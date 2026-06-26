@@ -32,10 +32,21 @@ class ProjectAgent(BaseAgent):
     async def sync_state(self, vault_agent):
         """Saves project state to the distributed storage layer."""
         self.logger.info("Syncing project state to IPFS...")
-        # data = self.model_dump_json()
-        # cid = await vault_agent.upload_data(data)
+        data = {
+            "blueprint": self.blueprint.model_dump(),
+            "state": self.state
+        }
+        # In a real implementation:
+        # cid = await vault_agent.upload_data(json.dumps(data))
+        # self.logger.info(f"Project state synced to CID: {cid}")
         # return cid
         return "mock-cid-for-state"
+
+    async def add_member(self, pubkey: str):
+        """Adds a new member to the project."""
+        if pubkey not in self.blueprint.members:
+            self.blueprint.members.append(pubkey)
+            self.logger.info(f"Added member {pubkey} to project {self.blueprint.name}")
 
     async def handle_message(self, message: AgentMessage):
         if message.sender not in self.blueprint.members:

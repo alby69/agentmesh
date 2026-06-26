@@ -27,6 +27,22 @@
 
     <form hx-post="/generate" hx-target="#status-container" hx-indicator="#gen-loading">
         <input type="hidden" name="newsletter_url" value="{{ newsletter_url }}">
+
+        <!-- Format Selection -->
+        <div class="flex items-center gap-6 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <span class="text-sm font-bold text-slate-500 uppercase tracking-wider">Formato:</span>
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="radio" name="podcast_format" value="monologue" checked
+                       class="w-5 h-5 text-primary focus:ring-primary border-slate-300">
+                <span class="text-sm font-medium text-slate-700 group-hover:text-primary transition">Monologo</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="radio" name="podcast_format" value="dialogue"
+                       class="w-5 h-5 text-primary focus:ring-primary border-slate-300">
+                <span class="text-sm font-medium text-slate-700 group-hover:text-primary transition">Dialogo (NotebookLM style)</span>
+            </label>
+        </div>
+
         <div class="grid gap-4 mb-8" id="articles-container">
             {% if articles %}
             {% for article in articles %}

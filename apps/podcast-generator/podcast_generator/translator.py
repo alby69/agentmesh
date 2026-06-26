@@ -20,8 +20,24 @@ REGOLE:
 - Produci solo il testo da leggere, senza markup o istruzioni di regia
 - Ogni episodio deve essere un monologo fluido e piacevole da ascoltare"""
 
+DIALOGUE_SYSTEM_PROMPT = """Sei un team di due podcaster (Host e Guest).
+Il tuo compito è prendere una o più newsletter tecniche in inglese e trasformarle
+in una conversazione coinvolgente (stile NotebookLM) in {language}.
 
-def build_system_prompt(language: str) -> str:
+REGOLE:
+- Traduci in {language}, ma mantieni un tono colloquiale e serrato tra i due conduttori.
+- Formato: [Host]: ... [Guest]: ... [Host]: ...
+- L'Host introduce gli argomenti e guida la discussione.
+- Il Guest approfondisce i dettagli, fa domande intelligenti e reagisce con entusiasmo.
+- Non elencare i tool: discutili come se li steste scoprendo insieme.
+- Inizia direttamente con un saluto tra i due conduttori.
+- Produci solo il testo del dialogo con i tag [Host] e [Guest], senza markup aggiuntivo.
+- Ogni episodio deve essere un dialogo fluido, naturale e piacevole da ascoltare."""
+
+
+def build_system_prompt(language: str, format: str = "monologue") -> str:
+    if format == "dialogue":
+        return DIALOGUE_SYSTEM_PROMPT.format(language=language)
     return LANGUAGE_SYSTEM_PROMPT.format(language=language)
 
 
@@ -167,7 +183,7 @@ async def translate_newsletter(
 ) -> str:
     provider = get_llm_provider(cfg)
     model = _get_model(cfg)
-    system_prompt = build_system_prompt(cfg.language)
+    system_prompt = build_system_prompt(cfg.language, cfg.podcast_format)
 
     if cfg.use_web_search:
         prompt = (
@@ -186,7 +202,7 @@ async def translate_multiple(
 ) -> str:
     provider = get_llm_provider(cfg)
     model = _get_model(cfg)
-    system_prompt = build_system_prompt(cfg.language)
+    system_prompt = build_system_prompt(cfg.language, cfg.podcast_format)
 
     combined = "\n\n--- NUOVA NEWSLETTER ---\n\n".join(
         f"TITOLO: {title}\nTESTO:\n{content}"
