@@ -1,26 +1,26 @@
-# Podcast Generator — Libreria Python
+# Podcast Generator — Python Library
 
-## Installazione
+## Installation
 
 ```bash
 pip install -r requirements.txt
-# oppure, se pubblicato:
+# or, if published:
 # pip install podcast-generator
 ```
 
-Dipendenze opzionali per provider LLM:
+Optional dependencies for LLM providers:
 
 ```bash
-pip install openai              # Provider OpenAI
-pip install anthropic           # Provider Anthropic
-# Ollama funziona via HTTP (httpx, già in requirements.txt)
+pip install openai              # OpenAI Provider
+pip install anthropic           # Anthropic Provider
+# Ollama works via HTTP (httpx, already in requirements.txt)
 ```
 
-## Configurazione
+## Configuration
 
-### Con file `.env`
+### With `.env` file
 
-Crea un `.env` nella directory di lavoro:
+Create a `.env` in the working directory:
 
 ```env
 LLM_PROVIDER=gemini
@@ -28,16 +28,16 @@ GEMINI_API_KEY=your-key
 NEWSLETTER_URL=https://example.com
 ```
 
-Poi:
+Then:
 
 ```python
 from podcast_generator.config import Settings
 
-cfg = Settings()  # Legge automaticamente da .env
-cfg.validate()    # Verifica campi obbligatori
+cfg = Settings()  # Automatically reads from .env
+cfg.validate()    # Verifies mandatory fields
 ```
 
-### Senza file `.env`
+### Without `.env` file
 
 ```python
 cfg = Settings(
@@ -48,7 +48,7 @@ cfg = Settings(
 )
 ```
 
-### Tutte le opzioni di configurazione
+### All Configuration Options
 
 ```python
 cfg = Settings(
@@ -69,7 +69,7 @@ cfg = Settings(
     elevenlabs_api_key="...",
     elevenlabs_voice="...",
 
-    # ── Sorgente ──
+    # ── Source ──
     source_name="My Newsletter",
     newsletter_url="https://newsletter.example.com",
     archive_url="https://newsletter.example.com/archive",
@@ -87,23 +87,23 @@ cfg = Settings(
 )
 ```
 
-## API Pubblica — `PodcastGenerator`
+## Public API — `PodcastGenerator`
 
-La classe principale. Accetta una configurazione opzionale.
+The main class. Accepts an optional configuration.
 
 ```python
 from podcast_generator import PodcastGenerator, Settings
 
-gen = PodcastGenerator()                          # Config da .env
-gen = PodcastGenerator(Settings(...))             # Config personalizzata
+gen = PodcastGenerator()                          # Config from .env
+gen = PodcastGenerator(Settings(...))             # Custom config
 ```
 
-## Evoluzione v3.0: Agenti Specializzati
+## v3.0 Evolution: Specialized Agents
 
-In PodcastGen 3.0, puoi utilizzare direttamente gli agenti per un controllo più granulare e per flussi decentralizzati.
+In PodcastGen 3.0, you can directly use agents for more granular control and decentralized workflows.
 
 ### `ContentAgent`
-Esegue la logica di generazione (fetch, translate, synthesis).
+Handles generation logic (fetch, translate, synthesis).
 ```python
 from podcast_generator.agents.content_agent import ContentAgent
 agent = ContentAgent(cfg)
@@ -111,15 +111,15 @@ episode = await agent.generate_episode_from_newsletter(newsletter)
 ```
 
 ### `NetworkAgent` (Nostr)
-Gestisce l'identità e la pubblicazione P2P.
+Manages identity and P2P publishing.
 ```python
 from podcast_generator.agents.network_agent import NetworkAgent
 agent = NetworkAgent(cfg, secret_key="...")
-await agent.publish_podcast("Titolo", "IPFS_CID", metadata={})
+await agent.publish_podcast("Title", "IPFS_CID", metadata={})
 ```
 
 ### `StorageAgent` (IPFS)
-Gestisce l'upload e il recupero via Content-Addressing.
+Manages upload and retrieval via Content-Addressing.
 ```python
 from podcast_generator.agents.storage_agent import StorageAgent
 agent = StorageAgent(cfg)
@@ -130,7 +130,7 @@ cid = await agent.upload_file(path_to_audio)
 
 #### `fetch_articles(url=None) -> list[ArticleSummary]`
 
-Estrae la lista degli articoli da una pagina archive di newsletter.
+Extracts the list of articles from a newsletter archive page.
 
 ```python
 articles = await gen.fetch_articles("https://newsletter.example.com")
@@ -141,22 +141,22 @@ for a in articles:
 # OpenAI GPT-5 — https://.../p/openai-gpt5
 ```
 
-### Generazione episodi
+### Episode Generation
 
 #### `fetch_and_build_latest() -> Episode`
 
-Scarica l'ultima newsletter e genera l'episodio.
+Downloads the latest newsletter and generates the episode.
 
 ```python
 ep = await gen.fetch_and_build_latest()
 print(f"Audio: {ep.audio_path}")
-print(f"Durata: {ep.duration_minutes} min")
-print(f"Script salvato in: {ep.script_path}")
+print(f"Duration: {ep.duration_minutes} min")
+print(f"Script saved in: {ep.script_path}")
 ```
 
 #### `build_daily(newsletter: Newsletter) -> Episode`
 
-Genera un episodio da un oggetto Newsletter già ottenuto.
+Generates an episode from an already obtained Newsletter object.
 
 ```python
 nl = Newsletter(title="...", url="...", date=datetime.now(), content="...")
@@ -165,8 +165,8 @@ ep = await gen.build_daily(nl)
 
 #### `build_from_urls(urls: list[str]) -> Episode`
 
-Accetta una lista di URL di articoli. Se un solo URL → episodio giornaliero.
-Se multipli → episodio settimanale (compilation).
+Accepts a list of article URLs. If one URL → daily episode.
+If multiple → weekly episode (compilation).
 
 ```python
 ep = await gen.build_from_urls([
@@ -177,10 +177,10 @@ ep = await gen.build_from_urls([
 
 #### `fetch_and_build_weekly(days=7) -> Episode`
 
-Scarica le ultime N newsletter e le unisce in un episodio settimanale.
+Downloads the last N newsletters and merges them into a weekly episode.
 
 ```python
-ep = await gen.fetch_and_build_weekly(days=14)  # ultime 14
+ep = await gen.fetch_and_build_weekly(days=14)  # last 14 days
 ```
 
 #### `build_weekly(newsletters: list[Newsletter]) -> Episode`
@@ -192,21 +192,21 @@ ep = await gen.build_weekly(newsletters)
 
 #### `process_backlog(limit=None) -> dict`
 
-Scarica **tutte** le newsletter non ancora processate e genera episodi.
+Downloads **all** unprocessed newsletters and generates episodes.
 
 ```python
 result = await gen.process_backlog(limit=10)
-print(f"Generate: {len(result['daily'])} daily, {len(result['weekly'])} weekly")
+print(f"Generated: {len(result['daily'])} daily, {len(result['weekly'])} weekly")
 ```
 
-## Multi-LLM: Configurazione per provider
+## Multi-LLM: Configuration per provider
 
-### Gemini (default, gratuito)
+### Gemini (default, free)
 
 ```bash
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=AIza...
-GEMINI_MODEL=gemini-2.0-flash       # o gemini-1.5-flash, gemini-2.5-pro
+GEMINI_MODEL=gemini-2.0-flash       # or gemini-1.5-flash, gemini-2.5-pro
 ```
 
 ```python
@@ -222,7 +222,7 @@ pip install openai
 ```env
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-proj-...
-OPENAI_MODEL=gpt-4o-mini            # o gpt-4o, gpt-4-turbo, gpt-3.5-turbo
+OPENAI_MODEL=gpt-4o-mini            # or gpt-4o, gpt-4-turbo, gpt-3.5-turbo
 ```
 
 ### Anthropic
@@ -234,13 +234,13 @@ pip install anthropic
 ```env
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=claude-3-5-haiku-latest   # o claude-3-opus, claude-3-sonnet
+ANTHROPIC_MODEL=claude-3-5-haiku-latest   # or claude-3-opus, claude-3-sonnet
 ```
 
-### Ollama (locale)
+### Ollama (local)
 
 ```bash
-# Installa Ollama: https://ollama.com
+# Install Ollama: https://ollama.com
 ollama pull llama3
 ```
 
@@ -250,29 +250,29 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3
 ```
 
-Nessuna API key necessaria, tutto in locale.
+No API key necessary, everything is local.
 
-## TTS: Configurazione per provider
+## TTS: Configuration per provider
 
-### Edge-TTS (default, gratuito)
+### Edge-TTS (default, free)
 
-Nessuna API key. Voci italiane disponibili:
+No API key. Available Italian voices:
 
 ```env
 TTS_PROVIDER=edge
-TTS_VOICE=it-IT-GiuseppeNeural    # Maschile (default)
-# TTS_VOICE=it-IT-ElsaNeural      # Femminile
-# TTS_VOICE=it-IT-DiegoNeural     # Maschile, giovane
-# TTS_VOICE=it-IT-IsabellaNeural  # Femminile
+TTS_VOICE=it-IT-GiuseppeNeural    # Male (default)
+# TTS_VOICE=it-IT-ElsaNeural      # Female
+# TTS_VOICE=it-IT-DiegoNeural     # Male, young
+# TTS_VOICE=it-IT-IsabellaNeural  # Female
 ```
 
 ### ElevenLabs
 
 ```bash
-# Richiede API key (a pagamento)
+# Requires API key (paid)
 ELEVENLABS_API_KEY=your-key
-ELEVENLABS_VOICE=your-voice-id    # Dalla dashboard ElevenLabs
-TTS_VOICE=it-IT-GiuseppeNeural   # Fallback se ElevenLabs non trova la voce
+ELEVENLABS_VOICE=your-voice-id    # From ElevenLabs dashboard
+TTS_VOICE=it-IT-GiuseppeNeural   # Fallback if ElevenLabs voice not found
 ```
 
 ## Error Handling
@@ -293,16 +293,16 @@ from podcast_generator.exceptions import (
 try:
     episode = await gen.fetch_and_build_latest()
 except FetchError as e:
-    print(f"Errore nello scraping: {e}")
+    print(f"Scraping error: {e}")
 except TranslationError as e:
-    print(f"Errore LLM: {e}")
+    print(f"LLM error: {e}")
 except TTSError as e:
-    print(f"Errore TTS: {e}")
+    print(f"TTS error: {e}")
 except ConfigError as e:
-    print(f"Configurazione mancante: {e}")
+    print(f"Missing configuration: {e}")
 ```
 
-## Modelli
+## Models
 
 ### `Newsletter`
 
@@ -313,7 +313,7 @@ nl = Newsletter(
     title="AI News",                          # str
     url="https://.../p/article",              # str
     date=datetime.now(),                      # datetime
-    content="Contenuto dell'articolo...",     # str
+    content="Article content...",             # str
 )
 ```
 
@@ -323,7 +323,7 @@ nl = Newsletter(
 ep = Episode(
     audio_path=Path("./output/daily/...mp3"), # Path
     script_path=Path("./output/daily/...txt"),# Path
-    script="Ciao a tutti...",                 # str
+    script="Hello everyone...",              # str
     date_str="2026-05-27",                    # str
     title="AI News",                          # str
     url="https://...",                        # str
@@ -336,14 +336,14 @@ ep = Episode(
 ```python
 summary = ArticleSummary(
     href="https://.../p/article",             # str
-    text="AI Framework XYZ 5.0",              # str (titolo)
-    description="Nuovo framework...",         # str (descrizione breve)
+    text="AI Framework XYZ 5.0",              # str (title)
+    description="New framework...",           # str (short description)
 )
 ```
 
 ### `GenerationJob`
 
-Usato internamente dalla web app per tracciare lo stato delle generazioni asincrone.
+Used internally by the web app to track asynchronous generation status.
 
 ```python
 job = GenerationJob(
@@ -356,9 +356,9 @@ job = GenerationJob(
 )
 ```
 
-## Esempi completi
+## Complete Examples
 
-### Episodio giornaliero automatico
+### Automatic Daily Episode
 
 ```python
 import asyncio
@@ -367,12 +367,12 @@ from podcast_generator import PodcastGenerator
 async def main():
     gen = PodcastGenerator()
     ep = await gen.fetch_and_build_latest()
-    print(f"Episodio creato: {ep.audio_path} ({ep.duration_minutes:.1f} min)")
+    print(f"Episode created: {ep.audio_path} ({ep.duration_minutes:.1f} min)")
 
 asyncio.run(main())
 ```
 
-### Selezione articoli e generazione
+### Article Selection and Generation
 
 ```python
 import asyncio
@@ -381,20 +381,20 @@ from podcast_generator import PodcastGenerator
 async def main():
     gen = PodcastGenerator()
 
-    # 1. Carica la lista articoli
+    # 1. Load article list
     articles = await gen.fetch_articles("https://newsletter.example.com")
 
-    # 2. Prendi i primi 3
+    # 2. Take the first 3
     urls = [a.href for a in articles[:3]]
 
-    # 3. Genera (se 1 → daily, se >1 → weekly compilation)
+    # 3. Generate (if 1 → daily, if >1 → weekly compilation)
     ep = await gen.build_from_urls(urls)
-    print(f"Podcast pronto: {ep.audio_path}")
+    print(f"Podcast ready: {ep.audio_path}")
 
 asyncio.run(main())
 ```
 
-### Con OpenAI
+### With OpenAI
 
 ```python
 import asyncio
@@ -409,12 +409,12 @@ async def main():
     )
     gen = PodcastGenerator(cfg)
     ep = await gen.fetch_and_build_latest()
-    print(f"Fatto! {ep.audio_path}")
+    print(f"Done! {ep.audio_path}")
 
 asyncio.run(main())
 ```
 
-### Con Ollama (locale)
+### With Ollama (local)
 
 ```python
 cfg = Settings(
@@ -425,9 +425,9 @@ cfg = Settings(
 )
 ```
 
-## Integrazione in altri progetti
+## Integration in Other Projects
 
-### Come sottoprocesso
+### As a Subprocess
 
 ```python
 import subprocess, json
@@ -440,7 +440,7 @@ result = subprocess.run(
 print(result.stdout)
 ```
 
-### Come modulo importato
+### As an Imported Module
 
 ```python
 import sys
@@ -452,16 +452,16 @@ from podcast_generator import PodcastGenerator
 gen = PodcastGenerator()
 ```
 
-### Come pacchetto installato
+### As an Installed Package
 
 ```bash
 cd podcast-generator
-pip install -e .                # Installazione in sviluppo
-# Oppure, dopo aver pubblicato su PyPI:
+pip install -e .                # Editable installation
+# Or, after publishing to PyPI:
 # pip install podcast-generator
 ```
 
-Poi da qualsiasi progetto:
+Then from any project:
 
 ```python
 from podcast_generator import PodcastGenerator
