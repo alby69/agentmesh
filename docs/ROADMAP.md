@@ -1,171 +1,89 @@
 # Roadmap
 
-## v2.0 — Ristrutturazione completa (completata)
+## v2.0 — Complete Restructuring (Completed)
 
-### Obiettivo
-Trasformare il progetto in una **libreria Python installabile** con API pulita, multi-LLM, web app FastAPI e documentazione.
-
-### Cosa è stato fatto
-
-**Architettura a libreria**
-- Nuovo pacchetto `podcast_generator/` installabile via `pip` o `pyproject.toml`
-- Classe `PodcastGenerator` come interfaccia pubblica unica
-- Separazione netta tra libreria core, CLI, web app
-
-**Configurazione**
-- Migrazione a **Pydantic Settings V2**
-- Supporto multi-LLM: **Gemini**, **OpenAI**, **Anthropic**, **Ollama**
-- Provider TTS: **Edge-TTS** (default, gratuito), **ElevenLabs**
-
-**Web App**
-- Riscritta in **FastAPI** con OpenAPI/Swagger docs
-- **sqlite3** puro (leggero, zero dipendenze ORM)
-- **REST API** completa con Bearer token auth
-- **Web UI** protetta da password
-- **RSS feed** per podcast player
-
-**Nuove sorgenti**
-- Supporto **RSS feed** come input (feedparser)
-- Supporto **Email IMAP** (Gmail con App Password)
-  - `list_imap_folders()` per esplorare label/folder
-  - X-GM-LABELS per etichette Gmail personalizzate
-  - 5 strategie di fallback per risoluzione UID
-  - Decodifica RFC 2047 per soggetti email
-  - Paginazione con offset/limit (max 1000 email)
-
-**Web App**
-- Pagina **Impostazioni** (`/settings`) per configurare IMAP, colori UI
-- **Vista dettaglio articolo** (`/article`) con contenuto HTML
-- **Carica più email** (`/fetch-more-emails`) per batch IMAP successivi
-- Debug IMAP (`/imap-debug`, `/imap-folders`)
-- Campo `imap_max_emails` configurabile (validato 1-1000)
-- Background task con `asyncio.create_task` invece di `BackgroundTasks`
-
-**Bug fix**
-- `get_article_list` passava `browser` invece di `context` (crash)
-- Campi duplicati `intro_path`, `outro_path`, `use_web_search` in config
-- Funzione `generate_audio` duplicata in `tts.py`
-- Chiamate LLM sincrone in contesto async (ora tutte async)
-- Paginazione duplicata (HTMX swap su `#articles-section` con `outerHTML`)
-- `PodcastGenerator()` nel background task usava `.env` invece delle impostazioni web (`_cfg`)
-- Status container mancante nella vista dettaglio articolo
-- Gmail X-GM-LABELS non funzionava con cartelle annidate (`Newsletter/TAAFT`)
-
-**Documentazione**
-- `docs/library.md` — uso come libreria con esempi
-- `docs/web-app.md` — web app, newsletter esempio, REST API, deploy, IMAP
-- README aggiornato con Docker, multi-LLM, quick start, IMAP config
-
-**Autenticazione OAuth + JWT**
-- Login via **Google OAuth** (OpenID Connect) e **GitHub OAuth**
-- **JWT HS256** firmato per sessioni (7 giorni)
-- Tabella `users` in sqlite3 con profilo (email, nome, avatar)
-- `create_session_token` / `decode_session_token` per gestione sessioni
-- Fallback a `WEB_PASSWORD` se nessun OAuth configurato
-- Modalità sviluppo senza autenticazione se nessuna protezione configurata
-- Route `/auth/google`, `/auth/github`, `/auth/callback`, `/logout`
-- Avatar e nome utente in navbar
-- Scambio codice OAuth manuale con `httpx` (bypassa authlib session state, robusto anche con `--reload`)
-
-**Lingua podcast configurabile**
-- Campo `language` in Settings (predefinito: `italiano`)
-- Selettore lingua in pagina Impostazioni
-- `build_system_prompt(language)` parametrizzato
-- Audio (TTS) sempre in italiano indipendentemente dalla lingua di traduzione
+### Objective
+Transform the project into an **installable Python library** with a clean API, multi-LLM support, FastAPI web app, and documentation.
+- **Runtime status**: Stable local runtime with async-first architecture.
 
 ---
 
-## Stato Attuale: Sviluppo v3.0 (Agent-Centric & Decentralizzato) 🚀
+## v3.0 — The Decentralized Era (Current Phase) 🚀
 
-Stiamo attivamente lavorando alla versione 3.0, che segna il passaggio da un'architettura monolitica a un sistema **P2P Multi-Agente**.
+Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
 
-### v3.0 — L'Era Decentralizzata
+### Milestone 1: Core Agent Framework (Completed)
+- [x] **BaseAgent Framework**: Foundational infrastructure for decoupled asynchronous agents.
+- [x] **Relay Agent (Nostr)**: Identity (NIP-01) and event propagation.
+- [x] **Vault Agent (IPFS)**: Content-addressable storage using CIDs.
+- [x] **Content Agent**: Core generation logic refactored as an agent.
 
-| Milestone | Stato | Descrizione |
-|---|---|---|
-| **BaseAgent Framework** | ✅ | Infrastruttura per agenti asincroni disaccoppiati. |
-| **Network Agent (Nostr)** | 🏗️ | Gestione identità (chiavi) e comunicazione via protocollo Nostr. |
-| **Storage Agent (IPFS)** | 🏗️ | Archiviazione distribuita basata su CID invece di file locali. |
-| **Content Agent** | ✅ | Refactoring della logica core in forma di agente. |
-| **Social Agent** | 📅 | Interazioni community (commenti, like) su protocollo aperto. |
-| **Web UI Decentralizzata** | 📅 | Dashboard che interagisce con i relay Nostr. |
-
----
-
-## Proposte per il futuro (Aggiornate)
-
-### v3.1 — Qualità audio e produttività
-
-| Funzione | Descrizione |
-|---|---|
-| **Multi-speaker** | Dialogo tra 2 voci (conduttore + ospite) invece di monologo |
-| **Generazione batch** | Processare N newsletter in parallelo (asyncio.gather) |
-| **Cache TTS** | Evitare rigenerare audio per script identici |
-| **Supporto podcast lungo** | Suddividere episodi >60 min in parti |
-| **Scheduling integrato** | Agenda interna (APScheduler) invece di cron esterno |
-
-### v3.1 — Fonte contenuti
-
-| Funzione | Descrizione |
-|---|---|
-| **YouTube → Podcast** | Estrarre trascrizione YouTube → LLM → TTS |
-| **PDF/Articolo singolo** | Accettare URL diretto (non solo archive page) |
-| **RSS feed input** |Subscribe a feed RSS come fonte automatica |
-| **File upload** | Caricare PDF/TXT/DOCX per generazione podcast |
-
-### v3.2 — Esperienza Web
-
-| Funzione | Descrizione |
-|---|---|
-| **WebSocket progress** | Stato generazione in tempo reale (invece di polling HTMX) |
-| **Preview script** | Mostrare e modificare lo script prima di generare audio |
-| **Drag & drop articoli** | Riordinare playlist articoli nell'interfaccia |
-| **Storico ricco** | Filtri, ricerca, statistiche di ascolto |
-| **Temi chiari/scuri** | Tailwind dark mode |
-
-### v3.3 — API & Integrazione
-
-| Funzione | Descrizione |
-|---|---|
-| **Webhook callback** | Notifica POST a URL quando generazione completa |
-| **API key management** | CRUD per API token via web UI |
-| **Rate limiting** | Limite richieste per token/IP (Flask-Limiter pattern) |
-| **OpenAPI client SDK** | Generare client Python/JS da spec OpenAPI |
-| **GraphQL endpoint** | Alternativa a REST per query complesse |
-
-### v4.0 — Produzione
-
-| Funzione | Descrizione |
-|---|---|
-| **Multi-utente** | Autenticazione, profili, sorgenti multiple per utente |
-| **PostgreSQL support** | Sostituire sqlite3 per deploy multi-utente |
-| **Cloud storage** | Upload audio su S3/GCS con download presigned |
-| **CDN delivery** | Distribuzione audio via CDN |
-| **Monitoring** | Logging strutturato, metriche, alerting |
-| **CI/CD** | GitHub Actions: test, lint, build Docker, deploy |
-
-### Idee sperimentali
-
-| Funzione | Descrizione |
-|---|---|
-| **AI Host Voice Cloning** | Clonare una voce reale (ElevenLabs voice lab) |
-| **Summarization Layer** | Riepilogo automatico prima della traduzione per newsletter lunghe |
-| **Multilingua** | Generare podcast in EN/FR/ES/DE oltre all'italiano |
-| **NotebookLM-style** | Generare "discussion" tra due host invece di monologo |
-| **Music background** | Aggiungere musica di sottofondo generata o librerie royalty-free |
+### Milestone 2: Service Coordination & Protocol (In Progress)
+- [ ] **v3.0.1 — Agent Registry (High Priority)**: Decentralized discovery mechanism. Agents publish capabilities as Nostr events so others can find "who can do TTS/Translation/etc."
+- [ ] **v3.0.2 — Standardized AgentMessage**: Unified communication protocol for inter-agent tasks and payloads.
+- [ ] **v3.0.3 — Task Agent**: The orchestrator that receives high-level requests and delegates them to specialized agents (Content, Storage, Network).
+- [ ] **NIP-94 Integration**: Standardized file metadata events for better client compatibility.
 
 ---
 
-## Contribuire
+## v3.1 — Enhancement & Scaling
 
-Le proposte sono ordinate per priorità percepita. Se vuoi contribuire:
+### Product Features
+- **Multi-speaker**: Dialogue between 2 voices (host + guest).
+- **NotebookLM Style**: Deep discussion generation.
+- **Long-form Podcasts**: Handling episodes >60 min.
 
-1. Scegli una funzione dalla roadmap
-2. Apri una issue per discuterla
-3. Implementala con test
-4. Apri PR
+### Infrastructure Features
+- **TTS Caching**: Avoid regenerating audio for identical scripts.
+- **Scheduling**: Built-in task scheduling.
+- **Batch Processing**: Parallel generation workflows.
 
-Ogni nuova funzione dovrebbe:
-- Avere test (pytest)
-- Essere documentata in `docs/`
-- Seguire il pattern del progetto (async first, Pydantic models)
+---
+
+## v3.5 — Advanced Coordination & Workflow 💸
+
+Focusing on the "Market of Cooperative Intelligences".
+
+### Milestone 1: Workflow & Knowledge
+- **Workflow Agent**: Manages complex sequences of tasks (fetch → summarize → translate → script → audio → publish).
+- **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr.
+
+### Milestone 2: agentstr-sdk & MCP
+- **MCP Compatibility**: Exposing agent capabilities as Model Context Protocol tools.
+- **Advanced A2A**: Integration of `agentstr-sdk` for professional-grade agent communication.
+- **Micropayments (Lightning/Cashu)**: Pay-per-task execution (Routstr-style).
+
+---
+
+## v4.0 — Decentralized Native & Organizational Layer 🏛️
+
+Shifting the focus from a "Podcast Tool" to a "Distributed Agentic Platform".
+
+### Milestone 1: Project Agent (Strategic Value)
+- **Project Agent**: An agent representing an autonomous project. Maintains state, coordinates members, and manages memory/communication for a specific goal.
+
+### Milestone 2: Decentralized Infrastructure
+- **Identity Agent**: Sovereign identity based solely on Nostr pubkeys.
+- **Reputation Agent**: Trust scores based on verified feedback and work history in the mesh.
+- **Marketplace Agent**: Automated matching between service providers and requestors.
+- **Federated Search**: Distributed content discovery across Nostr, IPFS, and local caches.
+
+---
+
+## Implementation Plan (Current: v3.0.x)
+
+We are currently focused on stabilizing the core mesh protocols:
+
+1.  **Registry Implementation**: Defining the `AgentCapability` schema and Nostr event kind for discovery.
+2.  **Message Protocol**: Finalizing the `AgentMessage` structure to ensure long-term compatibility.
+3.  **Task Orchestration**: Introducing the `TaskAgent` to move away from direct user-to-content-agent interaction.
+
+---
+
+## Contributing
+
+If you want to contribute:
+1. Choose a feature from the roadmap.
+2. Open an issue to discuss it.
+3. Implement it with tests.
+Every new feature should have tests (pytest) and follow the async-first pattern.

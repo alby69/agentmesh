@@ -1,177 +1,177 @@
 # Podcast Generator — Web App
 
-Web app per generare podcast da newsletter con interfaccia visuale e API REST.
+Web app to generate podcasts from newsletters with a visual interface and REST API.
 
 > [!WARNING]
-> **Versione 3.0 (In Sviluppo):** L'interfaccia web attuale interagisce con un database SQLite locale. Stiamo migrando verso una UI decentralizzata che interroga i relay **Nostr** e recupera audio da **IPFS**.
+> **Version 3.0 (In Development):** The current web interface interacts with a local SQLite database. We are migrating towards a decentralized UI that queries **Nostr** relays and retrieves audio from **IPFS**.
 
-## Avvio rapido
+## Quick Start
 
 ```bash
 source .venv/bin/activate
 
-# Avvia il server
+# Start the server
 uvicorn podcast_generator.web.app:app --reload
 
-# Oppure con parametri custom
+# Or with custom parameters
 uvicorn podcast_generator.web.app:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-Apri http://localhost:8000
+Open http://localhost:8000
 
-## Esempio: Newsletter Beehiiv
+## Example: Beehiiv Newsletter
 
-### 1. Configura `.env`
+### 1. Configure `.env`
 
 ```env
 GEMINI_API_KEY=AIza...
 TTS_VOICE=it-IT-ElsaNeural
 
-# Non serve configurare NEWSLETTER_URL qui —
-# lo inserirai direttamente dalla web UI
+# No need to configure NEWSLETTER_URL here —
+# you will enter it directly from the web UI
 ```
 
-### 2. Avvia il server
+### 2. Start the server
 
 ```bash
 uvicorn podcast_generator.web.app:app --reload
 ```
 
-### 3. Usa la Web UI
+### 3. Use the Web UI
 
-1. Apri http://localhost:8000
-2. Scegli la sorgente:
-   - **Web**: incolla URL newsletter (es. `https://newsletter.theresanaiforthat.com`) e clicca **Analizza**
-   - **Email**: vai su **Impostazioni**, configura IMAP (host, utente, password, cartella), torna alla home e clicca **Analizza**
-3. Vedrai la lista degli articoli con checkbox
-4. Seleziona uno o più articoli
-5. Clicca **"Genera Podcast"**
-6. Attendi la generazione (polling HTMX mostra il progresso)
-7. Scarica l'MP3 o ascolta dal player embedded
+1. Open http://localhost:8000
+2. Choose the source:
+   - **Web**: paste newsletter URL (e.g., `https://newsletter.theresanaiforthat.com`) and click **Analyze**
+   - **Email**: go to **Settings**, configure IMAP (host, user, password, folder), return home and click **Analyze**
+3. You will see the list of articles with checkboxes
+4. Select one or more articles
+5. Click **"Generate Podcast"**
+6. Wait for generation (HTMX polling shows progress)
+7. Download the MP3 or listen from the embedded player
 
-### 4. Usa la REST API
+### 4. Use the REST API
 
 ```bash
-# 1. Ottieni la lista articoli
+# 1. Get article list
 curl -X POST http://localhost:8000/api/v1/fetch-articles \
   -H "Content-Type: application/json" \
   -d '{"url": "https://newsletter.theresanaiforthat.com"}'
 
-# 2. Avvia generazione
+# 2. Start generation
 curl -X POST http://localhost:8000/api/v1/generate \
   -H "Content-Type: application/json" \
   -d '{"urls": ["https://newsletter.theresanaiforthat.com/p/article-1"]}'
 # → {"job_id": "abc123", "status": "processing", "status_url": "/api/v1/status/abc123"}
 
-# 3. Controlla stato
+# 3. Check status
 curl http://localhost:8000/api/v1/status/abc123
 # → {"job_id": "abc123", "status": "completed", "download_url": "/download/daily/...mp3", ...}
 
-# 4. Scarica
+# 4. Download
 curl -O http://localhost:8000/api/v1/episodes/1/audio
 ```
 
-## Autenticazione
+## Authentication
 
 ### OAuth (Google / GitHub)
 
-Il metodo consigliato. Crea un OAuth Client ID in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-o [GitHub Settings](https://github.com/settings/developers) e imposta nel `.env`:
+Recommended method. Create an OAuth Client ID in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+or [GitHub Settings](https://github.com/settings/developers) and set it in `.env`:
 
 ```env
 OAUTH_GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 OAUTH_GOOGLE_CLIENT_SECRET=GOCSPX-...
 # OAUTH_GITHUB_CLIENT_ID=xxx
 # OAUTH_GITHUB_CLIENT_SECRET=xxx
-JWT_SECRET=una-chiave-casuale-di-almeno-32-caratteri
+JWT_SECRET=a-random-key-at-least-32-characters
 ```
 
-**URI di callback da registrare:** `http://localhost:8000/auth/callback`
+**Callback URI to register:** `http://localhost:8000/auth/callback`
 
-### Password condivisa (fallback)
+### Shared Password (fallback)
 
-Se non configuri OAuth, puoi usare una password singola:
+If you don't configure OAuth, you can use a single password:
 
 ```env
-WEB_PASSWORD=mia-password-sicura
+WEB_PASSWORD=my-secure-password
 ```
 
-La pagina di login mostrerà il form password. Il cookie `session` scade dopo 7 giorni.
+The login page will show the password form. The `session` cookie expires after 7 days.
 
-### Modalità sviluppo
+### Development Mode
 
-Se non configuri né OAuth né `WEB_PASSWORD`, l'accesso è libero (utile in sviluppo).
+If you configure neither OAuth nor `WEB_PASSWORD`, access is open (useful in development).
 
 ### REST API (Bearer token)
 
 ```env
-API_TOKEN=il-mio-token-api
+API_TOKEN=my-api-token
 ```
 
-Tutti gli endpoint `/api/v1/*` richiedono ora:
+All `/api/v1/*` endpoints now require:
 
 ```bash
-curl -H "Authorization: Bearer il-mio-token-api" http://localhost:8000/api/v1/episodes
+curl -H "Authorization: Bearer my-api-token" http://localhost:8000/api/v1/episodes
 ```
 
-Se `API_TOKEN` è vuoto (default), le API sono pubbliche.
+If `API_TOKEN` is empty (default), APIs are public.
 
-### Riepilogo variabili auth
+### Auth Variables Summary
 
-| Variabile | Default | Ruolo |
+| Variable | Default | Role |
 |---|---|---|
-| `OAUTH_GOOGLE_CLIENT_ID` | — | Client ID Google OAuth |
-| `OAUTH_GOOGLE_CLIENT_SECRET` | — | Client Secret Google OAuth |
-| `OAUTH_GITHUB_CLIENT_ID` | — | Client ID GitHub OAuth |
-| `OAUTH_GITHUB_CLIENT_SECRET` | — | Client Secret GitHub OAuth |
-| `JWT_SECRET` | `change-me` | Chiave HMAC per firma JWT sessioni |
-| `WEB_PASSWORD` | — | Password fallback Web UI |
-| `API_TOKEN` | — | Token REST API (vuoto = pubblico) |
+| `OAUTH_GOOGLE_CLIENT_ID` | — | Google OAuth Client ID |
+| `OAUTH_GOOGLE_CLIENT_SECRET` | — | Google OAuth Client Secret |
+| `OAUTH_GITHUB_CLIENT_ID` | — | GitHub OAuth Client ID |
+| `OAUTH_GITHUB_CLIENT_SECRET` | — | GitHub OAuth Client Secret |
+| `JWT_SECRET` | `change-me` | HMAC key for JWT session signing |
+| `WEB_PASSWORD` | — | Web UI fallback password |
+| `API_TOKEN` | — | REST API token (empty = public) |
 
-## Endpoint API
+## API Endpoints
 
 ### Web UI
 
-| Metodo | Path | Auth | Descrizione |
+| Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/` | Sessione | Home page |
-| GET | `/login` | — | Pagina login (OAuth + password) |
-| POST | `/login` | — | Login con password |
+| GET | `/` | Session | Home page |
+| GET | `/login` | — | Login page (OAuth + password) |
+| POST | `/login` | — | Password login |
 | GET | `/logout` | — | Logout |
-| GET | `/auth/google` | — | Redirect Google OAuth |
-| GET | `/auth/github` | — | Redirect GitHub OAuth |
-| GET | `/auth/callback` | — | Callback OAuth |
-| POST | `/fetch-articles` | Sessione | Estrai articoli da URL/email |
-| POST | `/fetch-more-emails` | Sessione | Carica più email IMAP |
-| POST | `/article` | Sessione | Dettaglio articolo |
-| POST | `/generate` | Sessione | Avvia generazione podcast |
-| GET | `/check-status/{job_id}` | Sessione | Polling stato generazione |
-| GET | `/settings` | Sessione | Pagina impostazioni |
-| POST | `/save-settings` | Sessione | Salva impostazioni |
-| GET | `/imap-folders` | Sessione | Elenca cartelle IMAP |
-| POST | `/imap-debug` | Sessione | Debug label Gmail |
-| GET | `/download/{folder}/{file}` | Pubblico | Download MP3 |
-| GET | `/rss` | Pubblico | Feed RSS episodi |
+| GET | `/auth/google` | — | Google OAuth redirect |
+| GET | `/auth/github` | — | GitHub OAuth redirect |
+| GET | `/auth/callback` | — | OAuth callback |
+| POST | `/fetch-articles` | Session | Extract articles from URL/email |
+| POST | `/fetch-more-emails` | Session | Load more IMAP emails |
+| POST | `/article` | Session | Article detail |
+| POST | `/generate` | Session | Start podcast generation |
+| GET | `/check-status/{job_id}` | Session | Generation status polling |
+| GET | `/settings` | Session | Settings page |
+| POST | `/save-settings` | Session | Save settings |
+| GET | `/imap-folders` | Session | List IMAP folders |
+| POST | `/imap-debug` | Session | Gmail label debug |
+| GET | `/download/{folder}/{file}` | Public | MP3 download |
+| GET | `/rss` | Public | Episode RSS feed |
 
-### REST API (tutte `/api/v1/*`)
+### REST API (all `/api/v1/*`)
 
-| Metodo | Path | Auth | Descrizione |
+| Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/api/v1/generate` | Bearer | Avvia generazione podcast |
-| GET | `/api/v1/status/{job_id}` | Bearer | Stato generazione |
-| GET | `/api/v1/episodes` | Bearer | Lista episodi (`?limit=20`) |
-| GET | `/api/v1/episodes/{id}` | Bearer | Dettaglio episodio |
-| GET | `/api/v1/episodes/{id}/audio` | Bearer | Download file MP3 |
-| POST | `/api/v1/fetch-articles` | Bearer | Lista articoli da URL |
+| POST | `/api/v1/generate` | Bearer | Start podcast generation |
+| GET | `/api/v1/status/{job_id}` | Bearer | Generation status |
+| GET | `/api/v1/episodes` | Bearer | Episode list (`?limit=20`) |
+| GET | `/api/v1/episodes/{id}` | Bearer | Episode detail |
+| GET | `/api/v1/episodes/{id}/audio` | Bearer | MP3 file download |
+| POST | `/api/v1/fetch-articles` | Bearer | Article list from URL |
 
-## Riferimento API dettagliato
+## Detailed API Reference
 
 ### `POST /api/v1/generate`
 
 Request:
 ```json
 {
-    "urls": ["https://example.com/p/articolo-1", "https://example.com/p/articolo-2"]
+    "urls": ["https://example.com/p/article-1", "https://example.com/p/article-2"]
 }
 ```
 
@@ -191,13 +191,13 @@ Response:
 {
     "job_id": "550e8400-...",
     "status": "completed",
-    "download_url": "/download/daily/2026-05-27_titolo_abc123.mp3",
+    "download_url": "/download/daily/2026-05-27_title_abc123.mp3",
     "title": "AI News",
-    "filename": "2026-05-27_titolo_abc123.mp3"
+    "filename": "2026-05-27_title_abc123.mp3"
 }
 ```
 
-Stati possibili: `pending`, `processing`, `completed`, `failed`.
+Possible statuses: `pending`, `processing`, `completed`, `failed`.
 
 ### `GET /api/v1/episodes`
 
@@ -207,10 +207,10 @@ Response:
     {
         "id": 1,
         "title": "AI News",
-        "url": "https://example.com/p/articolo",
+        "url": "https://example.com/p/article",
         "date": "2026-05-27",
-        "audio_path": "/download/daily/2026-05-27_titolo.mp3",
-        "script_path": "./output/daily/2026-05-27_titolo.txt",
+        "audio_path": "/download/daily/2026-05-27_title.mp3",
+        "script_path": "./output/daily/2026-05-27_title.txt",
         "created_at": "2026-05-27T10:00:00"
     }
 ]
@@ -232,7 +232,7 @@ Response:
         {
             "href": "https://.../p/ai-framework-xyz",
             "text": "AI Framework XYZ 5.0",
-            "description": "Nuovo framework AI..."
+            "description": "New AI framework..."
         }
     ]
 }
@@ -240,22 +240,22 @@ Response:
 
 ## Swagger UI
 
-FastAPI genera automaticamente documentazione interattiva:
+FastAPI automatically generates interactive documentation:
 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
 ## RSS Feed
 
-`GET /rss` produce un feed RSS 2.0 compatibile con Apple Podcast, Spotify, e qualsiasi podcast player.
+`GET /rss` produces an RSS 2.0 feed compatible with Apple Podcasts, Spotify, and any podcast player.
 
 ```
 http://localhost:8000/rss
 ```
 
-Per esporlo pubblicamente, usa un reverse proxy (nginx, Caddy) o un servizio come ngrok.
+To expose it publicly, use a reverse proxy (nginx, Caddy) or a service like ngrok.
 
-## Deploy con Docker
+## Docker Deployment
 
 ```bash
 # Build
@@ -270,7 +270,7 @@ docker run -d \
   podcast-generator
 ```
 
-Con Docker Compose:
+With Docker Compose:
 
 ```yaml
 version: "3.8"
@@ -285,7 +285,7 @@ services:
     restart: unless-stopped
 ```
 
-## Deploy con reverse proxy (nginx)
+## Reverse Proxy Deployment (nginx)
 
 ```nginx
 server {
@@ -307,46 +307,46 @@ server {
 }
 ```
 
-## Sorgente Email (IMAP)
+## Email Source (IMAP)
 
-Configurabile dalla pagina **Impostazioni** (`/settings`) o via `.env`.
+Configurable from the **Settings** page (`/settings`) or via `.env`.
 
 ### Gmail
 
-Per usare Gmail serve una **App Password**:
+To use Gmail, an **App Password** is required:
 
-1. Attiva la [verifica in due passaggi](https://myaccount.google.com/security)
-2. Genera una [App Password](https://myaccount.google.com/apppasswords) per "Posta"
-3. Inserisci i dati:
+1. Enable [2-step verification](https://myaccount.google.com/security)
+2. Generate an [App Password](https://myaccount.google.com/apppasswords) for "Mail"
+3. Enter the details:
    - **Host**: `imap.gmail.com`
-   - **Utente**: `tua.email@gmail.com`
-   - **Password**: la App Password generata
-   - **Cartella**: `INBOX` o una label Gmail (es. `Newsletter/TAAFT`)
+   - **User**: `your.email@gmail.com`
+   - **Password**: the generated App Password
+   - **Folder**: `INBOX` or a Gmail label (e.g., `Newsletter/TAAFT`)
 
 ### IMAP via Web UI
 
-1. Vai su **Impostazioni** (in alto a destra)
-2. Compila i campi IMAP
-3. Clicca **"Elenca cartelle disponibili"** per esplorare le label
-4. Seleziona una cartella e salva
-5. Torna alla home e clicca **"Analizza"**
+1. Go to **Settings** (top right)
+2. Fill in the IMAP fields
+3. Click **"List available folders"** to explore labels
+4. Select a folder and save
+5. Return home and click **"Analyze"**
 
-### Comportamento
+### Behavior
 
-- **100 email** per batch (configurabile 1-1000 via `IMAP_MAX_EMAILS`)
-- Pulsante **"Carica più email"** carica il batch successivo
-- Soggetti decodificati RFC 2047
-- Vista dettaglio con contenuto HTML della newsletter
+- **100 emails** per batch (configurable 1-1000 via `IMAP_MAX_EMAILS`)
+- **"Load more emails"** button loads the next batch
+- RFC 2047 decoded subjects
+- Detail view with HTML content of the newsletter
 
-## Consigli di sicurezza per produzione
+## Production Security Tips
 
-1. **Configura OAuth** (Google/GitHub) invece di `WEB_PASSWORD`
-2. **Cambia `JWT_SECRET`** con una chiave casuale (almeno 32 caratteri)
-3. **Imposta `API_TOKEN`** per proteggere le REST API
-4. **Usa HTTPS** behind nginx/Caddy/Traefik con Let's Encrypt
-5. **Usa `--reload` solo in sviluppo** — in produzione avvia senza
+1. **Configure OAuth** (Google/GitHub) instead of `WEB_PASSWORD`
+2. **Change `JWT_SECRET`** with a random key (at least 32 characters)
+3. **Set `API_TOKEN`** to protect REST APIs
+4. **Use HTTPS** behind nginx/Caddy/Traefik with Let's Encrypt
+5. **Use `--reload` only in development** — start without it in production
 
-## Architettura
+## Architecture
 
 ```
 ┌──────────┐      ┌──────────────────────────────────────────┐
@@ -371,24 +371,24 @@ Per usare Gmail serve una **App Password**:
 
 ## API Status Codes
 
-| Codice | Significato |
+| Code | Meaning |
 |---|---|
 | 200 | OK |
-| 202 | Generazione avviata (job_id restituito) |
-| 302 | Redirect (non autenticato → `/login`) |
+| 202 | Generation started (job_id returned) |
+| 302 | Redirect (not authenticated → `/login`) |
 | 303 | Redirect post-login / post-logout |
-| 400 | Input mancante o invalido |
-| 401 | Token/password non valido |
-| 404 | Episodio/file non trovato |
+| 400 | Missing or invalid input |
+| 401 | Invalid token/password |
+| 404 | Episode/file not found |
 
-## Note tecniche
+## Technical Notes
 
-- La generazione podcast avviene in **background** tramite `asyncio.create_task`
-- I job sono in **memoria** (dict) — un restart del server cancella i job in corso
-- Le email via IMAP supportano **Gmail X-GM-LABELS**
-- 5 strategie di fallback per risoluzione UID email
-- Soggetti email decodificati RFC 2047
-- File MP3 generati **persistenti** in `output/`
-- Cronologia episodi in **SQLite** (`podcast.db`) — persistente tra restart
-- Le sessioni utente usano **JWT firmato** (cookie `session`, 7 giorni)
-- Il callback OAuth scambia il codice manualmente con `httpx` (affidabile anche con `--reload`)
+- Podcast generation occurs in the **background** via `asyncio.create_task`
+- Jobs are in **memory** (dict) — a server restart clears ongoing jobs
+- Emails via IMAP support **Gmail X-GM-LABELS**
+- 5 fallback strategies for email UID resolution
+- RFC 2047 decoded email subjects
+- Generated MP3 files are **persistent** in `output/`
+- Episode history in **SQLite** (`podcast.db`) — persistent between restarts
+- User sessions use **signed JWT** (cookie `session`, 7 days)
+- OAuth callback manually exchanges the code with `httpx` (reliable even with `--reload`)

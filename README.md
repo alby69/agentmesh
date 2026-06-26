@@ -6,83 +6,83 @@ AgentMesh is an open-source framework and ecosystem designed to build, deploy, a
 
 ---
 
-## 🌟 La Visione
+## 🌟 The Vision
 
-AgentMesh non è solo un software, è un'infrastruttura per la sovranità digitale.
+AgentMesh is not just software; it is an infrastructure for digital sovereignty.
 
-- **Senza Server Centrali**: Nessun singolo punto di fallimento. Il sistema vive sui nodi degli utenti.
-- **Identità Sovrana**: Ogni agente e utente possiede le proprie chiavi crittografiche (Nostr).
-- **Memoria Distribuita**: I dati sono archiviati su IPFS, rendendoli permanenti e indirizzabili per contenuto.
-- **Collaborazione Agente-Agente (A2A)**: Gli agenti cooperano via protocolli aperti, non API proprietarie.
+- **No Central Servers**: No single point of failure. The system lives on users' nodes.
+- **Sovereign Identity**: Every agent and user owns their cryptographic keys (Nostr).
+- **Distributed Memory**: Data is stored on IPFS, making it permanent and content-addressable.
+- **Agent-to-Agent (A2A) Collaboration**: Agents cooperate via open protocols, not proprietary APIs.
 
 ---
 
-## 🏗️ Struttura del Progetto
+## 🏗️ Project Structure
 
-Il repository è organizzato come un monorepo gestito con `uv`.
+The repository is organized as a monorepo managed with `uv`.
 
 ### Core Packages (`packages/`)
-- **[`agentmesh-core`](packages/agentmesh-core)**: Il "cervello" del sistema. Definisce le interfacce base, l'orchestrazione e i provider LLM/TTS.
-- **[`agentmesh-relay`](packages/agentmesh-relay)**: Il layer di comunicazione P2P basato sul protocollo **Nostr**.
-- **[`agentmesh-vault`](packages/agentmesh-vault)**: Il layer di archiviazione distribuita basato su **IPFS**.
-- **[`agentmesh-studio`](packages/agentmesh-studio)**: Strumenti CLI e dashboard per monitorare e gestire il mesh.
+- **[`agentmesh-core`](packages/agentmesh-core)**: The "brain" of the system. Defines base interfaces, orchestration, and LLM/TTS providers.
+- **[`agentmesh-relay`](packages/agentmesh-relay)**: The P2P communication layer based on the **Nostr** protocol.
+- **[`agentmesh-vault`](packages/agentmesh-vault)**: The distributed storage layer based on **IPFS**.
+- **[`agentmesh-studio`](packages/agentmesh-studio)**: CLI tools and dashboards for monitoring and managing the mesh.
 
 ### Applications (`apps/`)
-- **[`podcast-generator`](apps/podcast-generator)**: Il nostro caso d'uso principale. Una pipeline completa che trasforma newsletter in podcast in modo autonomo e distribuito.
+- **[`podcast-generator`](apps/podcast-generator)**: Our primary use case. A complete pipeline that transforms newsletters into podcasts in an autonomous and distributed manner.
 
 ---
 
-## 🎙️ Caso d'Uso: Podcast Generator
+## 🎙️ Use Case: Podcast Generator
 
-**PodcastGen** è la dimostrazione di cosa può fare AgentMesh. Trasforma contenuti testuali in episodi audio, li distribuisce via IPFS e li annuncia sulla rete Nostr.
+**PodcastGen** is a demonstration of what AgentMesh can do. It transforms text content into audio episodes, distributes them via IPFS, and announces them on the Nostr network.
 
 ### Quick Start (PodcastGen)
 
 ```bash
-# Installa le dipendenze
+# Install dependencies
 uv sync
 playwright install firefox
 
-# Configura l'ambiente
+# Configure the environment
 cp .env.example .env
-# Modifica .env con le tue chiavi API (Gemini, OpenAI, etc.)
+# Edit .env with your API keys (Gemini, OpenAI, etc.)
 
-# Avvia la generazione via CLI
+# Start generation via CLI
 python apps/podcast-generator/main.py daily
 
-# Avvia l'interfaccia Web
+# Start the Web Interface
 PYTHONPATH=apps/podcast-generator uvicorn podcast_generator.web.app:app --reload
 ```
 
-Consulta la [documentazione di PodcastGen](apps/podcast-generator/README.md) per maggiori dettagli.
+See the [PodcastGen documentation](apps/podcast-generator/README.md) for more details.
 
 ---
 
-## 🚀 Verso la v3.0
+## 🚀 Towards v3.0
 
-Stiamo attivamente migrando PodcastGen verso l'architettura AgentMesh v3.0 (Agent-Centric).
-I punti chiave della roadmap includono:
-- Integrazione nativa con **agentstr-sdk** per compatibilità **MCP** (Model Context Protocol).
-- Protocollo di comunicazione **Agent-to-Agent (A2A)** standardizzato.
-- Web UI completamente decentralizzata che interroga i relay Nostr.
+We are actively migrating PodcastGen towards the AgentMesh v3.0 (Agent-Centric) architecture.
+Key roadmap points include:
+- Native integration with **agentstr-sdk** for **MCP** (Model Context Protocol) compatibility.
+- Standardized **Agent-to-Agent (A2A)** communication protocol.
+- Fully decentralized Web UI that queries Nostr relays.
 
-Consulta [docs/v3-agent-centric-roadmap.md](docs/v3-agent-centric-roadmap.md) per i dettagli tecnici.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for technical details.
 
 ---
 
-## 📖 Documentazione
+## 📖 Documentation
 
-| Documento | Destinatario | Contenuto |
+| Document | Audience | Content |
 |---|---|---|
-| [docs/VISION.md](docs/VISION.md) | Tutti | La filosofia e il "perché" dietro AgentMesh |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Sviluppatori | Dettagli tecnici sui layer del mesh |
-| [docs/AGENTSTR_INTEGRATION.md](docs/AGENTSTR_INTEGRATION.md) | Sviluppatori | Piano di integrazione MCP e agentstr-sdk |
-| [apps/podcast-generator/README.md](apps/podcast-generator/README.md) | Utenti | Guida completa all'app podcast |
+| [docs/VISION.md](docs/VISION.md) | Everyone | The philosophy and "why" behind AgentMesh |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Developers | Technical details on the mesh layers |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Everyone | Development status and future plans |
+| [apps/podcast-generator/README.md](apps/podcast-generator/README.md) | Users | Complete guide to the podcast app |
 
 ---
 
-## Contribuire
+## Contributing
 
-Siamo in una fase di sviluppo intensa. Se vuoi contribuire alla costruzione di un futuro AI decentralizzato, apri una Issue o una Pull Request.
+We are in an intense development phase. If you want to contribute to building a decentralized AI future, open an Issue or a Pull Request.
 
 **AgentMesh: The mesh is the message.**
