@@ -25,21 +25,21 @@ Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
 
 ---
 
-## v3.1 — Scaling & Advanced Coordination (Current Phase)
+## v3.1 — Scaling & Advanced Coordination (Completed) 🚀
 
-### Strategic Agents (High Priority)
-- [ ] **Workflow Agent**: Manages complex task sequences (fetch → summarize → translate → script → audio → publish). Resolves dependencies using the Registry.
-- [ ] **Project Agent**: Represents an autonomous project. Maintains state, coordinates members (human/agent), and manages project memory on IPFS.
+### Strategic Agents
+- [x] **Workflow Agent**: Manages complex task sequences (fetch → summarize → translate → script → audio → publish). Resolves dependencies using the Registry.
+- [x] **Project Agent**: Represents an autonomous project. Maintains state, coordinates members (human/agent), and manages project memory on IPFS.
 
 ### Product Features (UX & Quality)
-- [ ] **Multi-speaker**: Dialogue between host and guest.
-- [ ] **NotebookLM style**: Deep "discussion" generation between two host voices.
+- [x] **Multi-speaker**: Dialogue between host and guest.
+- [x] **NotebookLM style**: Deep "discussion" generation between two host voices.
 - [ ] **Long-form Support**: Handling episodes >60 min with automatic part splitting.
 
 ### Infrastructure Features (Performance & Scaling)
-- [ ] **TTS Caching**: Content-addressed audio storage to avoid redundant synthesis (Hash-based lookup).
-- [ ] **Reactive Message Bus**: Agents actively listen for Nostr events tagged with their pubkey to trigger tasks.
-- [ ] **Integrated Scheduling**: Internal agenda (APScheduler) for automated tasks.
+- [x] **TTS Caching**: Content-addressed audio storage to avoid redundant synthesis (Hash-based lookup).
+- [x] **Reactive Message Bus**: Agents actively listen for Nostr events tagged with their pubkey to trigger tasks.
+- [x] **Integrated Scheduling**: Internal agenda (APScheduler) for automated tasks.
 
 ---
 
