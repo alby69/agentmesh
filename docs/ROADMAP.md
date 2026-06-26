@@ -59,17 +59,28 @@ Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
 
 Evolution from a "Podcast Tool" to a generic distributed agentic infrastructure.
 
-- [ ] **Identity Agent**: Sovereign identity management based on Nostr keys.
-- [ ] **Marketplace Agent**: Automated matching and bidding for agent services.
-- [ ] **Federated Search Agent**: Distributed discovery across Nostr, IPFS, and local caches.
+### Milestone 1: Advanced Identity & Discovery
+- [ ] **Identity Agent**: Sovereign identity management based on Nostr keys (NIP-05, NIP-32). Standardized key rotation and recovery.
+- [ ] **Federated Search Agent**: Distributed discovery across Nostr, IPFS, and local caches using the "Routstr" pattern.
+- [ ] **Capability Crawler**: Background agent that indexes the mesh and updates local knowledge graphs.
+
+### Milestone 2: Agentic Marketplace
+- [ ] **Marketplace Agent**: Automated matching and bidding (Service Announcements) for agent services using Nostr-native auctions.
+- [ ] **Reputation Oracle**: Aggregates Web-of-Trust signals and task completion history to rank mesh participants.
+- [ ] **Service Level Agreements (SLAs)**: Smart-contract-like templates for task guarantees via DLCs or multisig.
+
+### Milestone 3: Infrastructure & UX
+- [ ] **MCP Native Hub**: Full Model Context Protocol integration. Every agent becomes an MCP server and client.
+- [ ] **Mesh Dashboard**: Real-time visualization of the P2P network, task flows, and agent economy.
+- [ ] **Mobile Node**: Lightweight implementation for running agents on mobile devices (Android/iOS).
 
 ---
 
-## Implementation Plan: v3.1 (Immediate Focus)
+## Implementation Plan: v4.0 (Immediate Focus)
 
-1. **Workflow**: Implement the `WorkflowAgent` to abstract multi-step sequences.
-2. **Persistence**: Deploy `ProjectAgent` for long-running goal management.
-3. **Efficiency**: Implement TTS Hashing and Caching via the Vault layer.
+1. **Identity Refactor**: Integrate `agentstr-sdk` to handle sovereign identity and NIP-05 verification.
+2. **Discovery Protocols**: Implement the "Routstr" discovery mechanism to replace simple relay-based lookup.
+3. **A2A Bidding**: Deploy the first prototype of the Marketplace Agent with support for automated bidding.
 
 ---
 
