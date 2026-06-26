@@ -3,21 +3,22 @@
 AgentMesh adopts a layered architecture to separate responsibilities, ensure maximum decentralization, and enable an autonomous agentic economy.
 
 ## 1. Network Layer (P2P Mesh)
-The physical and logical foundation.
+The physical and logical foundation of the system.
 - **Technology**: Nostr (NIP-01, NIP-04, NIP-94).
 - **Role**: Peer discovery, NAT traversal (via relays), encrypted event transport.
+- **Evolution**: Investigating `libp2p` for pure gossip mesh communications in scenarios where Nostr relays are insufficient.
 
 ## 2. Storage Layer (Distributed Storage)
-The long-term memory.
+The long-term memory of the mesh.
 - **Technology**: IPFS (InterPlanetary File System).
-- **Role**: Content-addressed storage (CID).
-- **Deduplication**: Identical hashes result in single storage instances.
+- **Role**: Content-addressed storage. Every file (audio, script, metadata) is identified by a CID (Content Identifier).
+- **Deduplication**: If multiple agents generate the same content, the space occupied on the network does not increase.
 
 ## 3. Coordination & Discovery Layer (v3.0 Core)
-The nervous system coordinating agents.
+The nervous system that coordinates agents and allows the discovery of new capabilities.
 
 ### Agent Registry (v3.0.1)
-Decentralized discovery via Nostr. Agents publish an `AgentCapability` event:
+Decentralized discovery via Nostr. Agents publish an `AgentCapability` event to allow discovery of specialized skills:
 ```json
 {
     "agent_id": "unique-id",
@@ -45,8 +46,9 @@ Standardized inter-agent communication:
 }
 ```
 
-## 4. Incentives & Payments Layer
-- **Technology**: **Lightning Network** + **Cashu**.
+## 4. Incentives & Payments Layer (Value Transfer)
+Enables peer-to-peer economy between agents (A2A) and between users and agents.
+- **Technology**: **Lightning Network** + **Cashu** (ecash).
 - **Role**: Micropayments for tasks.
 - **Model**: Pay-per-request (A2A).
 

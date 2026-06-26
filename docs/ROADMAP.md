@@ -18,72 +18,63 @@ Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
 - [x] **Vault Agent (IPFS)**: Content-addressable storage using CIDs.
 - [x] **Content Agent**: Core generation logic refactored as an agent.
 
-### Milestone 2: Service Coordination & Protocol (In Progress)
-- [ ] **v3.0.1 — Agent Registry (High Priority)**: Decentralized discovery mechanism. Agents publish capabilities as Nostr events so others can find "who can do TTS/Translation/etc."
-- [ ] **v3.0.2 — Standardized AgentMessage**: Unified communication protocol for inter-agent tasks and payloads.
-- [ ] **v3.0.3 — Task Agent**: The orchestrator that receives high-level requests and delegates them to specialized agents (Content, Storage, Network).
-- [ ] **NIP-94 Integration**: Standardized file metadata events for better client compatibility.
+### Milestone 2: Core Mesh Protocols (v3.0.x - High Priority)
+- [ ] **v3.0.1 — Agent Registry**: Decentralized discovery mechanism via Nostr. Agents publish an `AgentCapability` event to allow discovery of specialized skills (TTS, Translation, etc.).
+- [ ] **v3.0.2 — Standardized AgentMessage**: Unified communication protocol with common schema (id, sender, receiver, type, payload, timestamp).
+- [ ] **v3.0.3 — Task Agent**: High-level orchestrator that receives requests and delegates to specialized agents (Content, Storage, Network).
 
 ---
 
-## v3.1 — Enhancement & Scaling
+## v3.1 — Product vs Infrastructure Expansion
 
-### Product Features
-- **Multi-speaker**: Dialogue between 2 voices (host + guest).
-- **NotebookLM Style**: Deep discussion generation.
-- **Long-form Podcasts**: Handling episodes >60 min.
+### Product Features (UX & Quality)
+- **Multi-speaker**: Dialogue between host and guest.
+- **NotebookLM style**: Deep "discussion" generation between two host voices.
+- **Long-form Support**: Handling episodes >60 min with automatic part splitting.
 
-### Infrastructure Features
-- **TTS Caching**: Avoid regenerating audio for identical scripts.
-- **Scheduling**: Built-in task scheduling.
-- **Batch Processing**: Parallel generation workflows.
+### Infrastructure Features (Performance & Scaling)
+- **TTS Caching**: Content-addressed audio storage to avoid redundant synthesis.
+- **Integrated Scheduling**: Internal agenda (APScheduler) for automated tasks.
+- **Batch Processing**: Parallel generation for multiple sources.
 
 ---
 
-## v3.5 — Advanced Coordination & Workflow 💸
-
-Focusing on the "Market of Cooperative Intelligences".
+## v3.5 — Coordination & Knowledge Mesh 💸
 
 ### Milestone 1: Workflow & Knowledge
-- **Workflow Agent**: Manages complex sequences of tasks (fetch → summarize → translate → script → audio → publish).
-- **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr.
+- **Workflow Agent**: Manages complex task sequences (fetch → summarize → translate → script → audio → publish). Each step is assigned to the best available agent.
+- **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr events.
 
-### Milestone 2: agentstr-sdk & MCP
-- **MCP Compatibility**: Exposing agent capabilities as Model Context Protocol tools.
-- **Advanced A2A**: Integration of `agentstr-sdk` for professional-grade agent communication.
-- **Micropayments (Lightning/Cashu)**: Pay-per-task execution (Routstr-style).
-
----
-
-## v4.0 — Decentralized Native & Organizational Layer 🏛️
-
-Shifting the focus from a "Podcast Tool" to a "Distributed Agentic Platform".
-
-### Milestone 1: Project Agent (Strategic Value)
-- **Project Agent**: An agent representing an autonomous project. Maintains state, coordinates members, and manages memory/communication for a specific goal.
-
-### Milestone 2: Decentralized Infrastructure
-- **Identity Agent**: Sovereign identity based solely on Nostr pubkeys.
-- **Reputation Agent**: Trust scores based on verified feedback and work history in the mesh.
-- **Marketplace Agent**: Automated matching between service providers and requestors.
-- **Federated Search**: Distributed content discovery across Nostr, IPFS, and local caches.
+### Milestone 2: Agentic Economy
+- **agentstr-sdk Integration**: Professional A2A coordination and MCP compatibility.
+- **Micropayments Layer**: Lightning Network and Cashu integration for pay-per-task execution.
 
 ---
 
-## Implementation Plan (Current: v3.0.x)
+## v4.0 — Decentralized Native Platform 🏛️
 
-We are currently focused on stabilizing the core mesh protocols:
+Evolution from a "Podcast Tool" to a generic distributed agentic infrastructure.
 
-1.  **Registry Implementation**: Defining the `AgentCapability` schema and Nostr event kind for discovery.
-2.  **Message Protocol**: Finalizing the `AgentMessage` structure to ensure long-term compatibility.
-3.  **Task Orchestration**: Introducing the `TaskAgent` to move away from direct user-to-content-agent interaction.
+### Milestone 1: Project Agent (Strategic High-Value)
+- **Project Agent**: Represents an autonomous project. Maintains state, coordinates members (human/agent), and manages memory on IPFS.
+
+### Milestone 2: Decentralized Native Components
+- **Identity Agent**: Sovereign identity management based on Nostr keys.
+- **Reputation Agent**: feedback and trust scores for agents in the mesh.
+- **Marketplace Agent**: Automated matching and bidding for agent services.
+- **Federated Search Agent**: Distributed discovery across Nostr, IPFS, and local caches.
+
+---
+
+## Implementation Plan: v3.0.x (Immediate Focus)
+
+1. **Registry**: Implement `AgentCapability` events (Nostr Kind 30311) for discovery.
+2. **Protocol**: Finalize `AgentMessage` Pydantic model for signed P2P communication.
+3. **Orchestration**: Deploy `TaskAgent` as the primary entry point for complex generation requests.
 
 ---
 
 ## Contributing
 
-If you want to contribute:
-1. Choose a feature from the roadmap.
-2. Open an issue to discuss it.
-3. Implement it with tests.
-Every new feature should have tests (pytest) and follow the async-first pattern.
+We welcome contributions to any part of the roadmap. Please open an issue to discuss your implementation plan before starting work.
+Every new feature should follow the async-first pattern and include comprehensive tests.
