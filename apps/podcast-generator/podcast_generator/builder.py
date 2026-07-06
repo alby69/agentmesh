@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from playwright.async_api import async_playwright, BrowserContext, Playwright
 
 from podcast_generator.config import Settings
 from podcast_generator.models import Newsletter, Episode
@@ -20,26 +21,6 @@ from podcast_generator.tts import generate_audio as _synthesize
 from podcast_generator.audio import check_duration, merge_audio_files, add_intro_outro
 from podcast_generator.tracker import Tracker
 
-_PLAYWRIGHT_CONTEXT = None
-
-
-async def _get_shared_context():
-    global _PLAYWRIGHT_CONTEXT
-    if _PLAYWRIGHT_CONTEXT is None:
-        from playwright.async_api import async_playwright
-
-        p = await async_playwright().start()
-        browser = await p.firefox.launch(headless=True)
-        _PLAYWRIGHT_CONTEXT = await browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            )
-        )
-    return _PLAYWRIGHT_CONTEXT
-
-
 def _slugify(text: str, max_len: int = 50) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")[:max_len]
 
@@ -50,18 +31,39 @@ def _save_script(script: str, path: Path):
 
 
 class PodcastGenerator:
-    """Main public API for podcast generation.
-
-    Usage:
-        gen = PodcastGenerator()
-        episode = await gen.fetch_and_build_latest()
-        # or
-        articles = await gen.fetch_articles("https://...")
-        episode = await gen.build_from_urls([articles[0].href])
-    """
+    """Main public API for podcast generation."""
 
     def __init__(self, config: Optional[Settings] = None):
         self.config = config or Settings()
+        self._playwright: Optional[Playwright] = None
+        self._browser_context: Optional[BrowserContext] = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+
+    async def close(self):
+        if self._browser_context:
+            await self._browser_context.browser.close()
+            self._browser_context = None
+        if self._playwright:
+            await self._playwright.stop()
+            self._playwright = None
+
+    async def get_browser_context(self) -> BrowserContext:
+        if self._browser_context is None:
+            self._playwright = await async_playwright().start()
+            browser = await self._playwright.firefox.launch(headless=True)
+            self._browser_context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/122.0.0.0 Safari/537.36"
+                )
+            )
+        return self._browser_context
 
     # --- Fetching ---
 
@@ -277,9 +279,3 @@ class PodcastGenerator:
             weekly_paths.append(weekly_audio)
 
         return weekly_paths
-
-
-def _with_search(cfg: Settings, enabled: Optional[bool]) -> Settings:
-    if enabled is not None:
-        cfg.use_web_search = enabled
-    return cfg

@@ -46,7 +46,7 @@ _cfg = Settings()
 
 
 @asynccontextmanager
-async def _lifespan(app):
+async def _lifespan(app: FastAPI):
     init_db()
     (_cfg.output_dir / "daily").mkdir(parents=True, exist_ok=True)
     (_cfg.output_dir / "weekly").mkdir(parents=True, exist_ok=True)
@@ -55,10 +55,12 @@ async def _lifespan(app):
     # Initialize Agents
     agents = get_agents(_cfg)
     await agents.start()
+    app.state.agents = agents
 
     # Initialize Scheduler
     scheduler = MeshScheduler(_cfg)
     await scheduler.start()
+    app.state.scheduler = scheduler
 
     yield
 

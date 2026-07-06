@@ -5,12 +5,11 @@ description = "IPFS storage layer for AgentMesh"
 authors = [{ name = "AgentMesh Contributors" }]
 requires-python = ">=3.10"
 dependencies = [
-    "agentmesh-core",
-    "aiohttp>=3.9.0",
+    "httpx>=0.27.0",
 ]
 
-[tool.uv.sources]
-agentmesh-core = { workspace = true }
+[tool.hatch.build.targets.wheel]
+packages = ["agentmesh"]
 
 [build-system]
 requires = ["hatchling"]
