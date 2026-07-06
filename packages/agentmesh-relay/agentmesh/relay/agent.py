@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from typing import Optional, List, Dict, Any, Callable
 from agentmesh.core import BaseAgent, MeshConfig
 from agentmesh.core.models import AgentCapability, AgentMessage
@@ -44,6 +45,12 @@ class NostrAgent(BaseAgent):
 
     def __init__(self, config: MeshConfig, secret_key: Optional[str] = None, relays: List[str] = None):
         super().__init__(config)
+
+        # Simple Rate Limiting: pubkey -> [timestamps]
+        self._rate_limits: Dict[str, List[float]] = {}
+        self._rate_limit_window = 60.0  # seconds
+        self._rate_limit_max_msgs = 10  # max messages per window
+
         if Client is None:
             self.logger.error("nostr-sdk not installed. NostrAgent will be dysfunctional.")
             self.client = None
@@ -92,9 +99,35 @@ class NostrAgent(BaseAgent):
         # Note: nostr-sdk-python handles notifications via a separate thread or async task
         self.client.handle_notifications(MeshNotificationHandler(self))
 
+    def _is_rate_limited(self, pubkey: str) -> bool:
+        """Checks if a pubkey is exceeding the rate limit."""
+        now = time.time()
+        if pubkey not in self._rate_limits:
+            self._rate_limits[pubkey] = []
+
+        # Clean up old timestamps
+        self._rate_limits[pubkey] = [t for t in self._rate_limits[pubkey] if now - t < self._rate_limit_window]
+
+        if len(self._rate_limits[pubkey]) >= self._rate_limit_max_msgs:
+            return True
+
+        self._rate_limits[pubkey].append(now)
+        return False
+
     async def _process_incoming_event(self, event: Event):
         """Processes a received Nostr event and converts it to an AgentMessage."""
         if event.kind() == KIND_AGENT_MESSAGE:
+            # Check if event has author (handle mocks)
+            try:
+                author = event.author()
+                pubkey = author.to_hex() if author else "unknown"
+            except:
+                pubkey = "unknown"
+
+            if self._is_rate_limited(pubkey):
+                self.logger.warning(f"Rate limit exceeded for sender {pubkey}. Ignoring message.")
+                return
+
             try:
                 msg = AgentMessage.model_validate_json(event.content())
                 self.logger.info(f"Received AgentMessage: {msg.id} from {msg.sender}")
