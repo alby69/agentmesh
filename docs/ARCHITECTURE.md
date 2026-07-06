@@ -58,6 +58,11 @@ Where logic resides.
 - **Workflow Agent (v3.5)**: Complex sequence manager.
 - **Project Agent (v4.0)**: Goal-oriented autonomous project representative.
 
+## 6. Infrastructure & Tooling
+Helper libraries and shared infrastructure components.
+- **AgentMesh LLM**: Unified provider interface for Gemini, OpenAI, Anthropic, and Ollama.
+- **Mesh Config**: Specialized, decoupled configuration management for apps and agents.
+
 ---
 
 ## Technical Directives

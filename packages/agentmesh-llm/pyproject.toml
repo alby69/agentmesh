@@ -1,11 +1,15 @@
 [project]
-name = "agentmesh-relay"
+name = "agentmesh-llm"
 version = "0.1.0"
-description = "Nostr relay layer for AgentMesh"
+description = "Unified LLM providers for AgentMesh"
 authors = [{ name = "AgentMesh Contributors" }]
 requires-python = ">=3.10"
 dependencies = [
-    "nostr-sdk>=0.37.0",
+    "pydantic>=2.0.0",
+    "google-genai>=1.14.0",
+    "openai>=1.0.0",
+    "anthropic>=0.45.0",
+    "httpx>=0.27.0",
 ]
 
 [tool.hatch.build.targets.wheel]

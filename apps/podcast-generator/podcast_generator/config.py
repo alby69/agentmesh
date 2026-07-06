@@ -1,41 +1,24 @@
-from __future__ import annotations
-
 from pathlib import Path
-from typing import Optional
-
+from typing import Optional, List
 from pydantic import Field
-from pydantic_settings import SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from agentmesh.core import MeshConfig
 
-
-class Settings(MeshConfig):
-    # === LLM Provider ===
-    llm_provider: str = Field(
-        default="gemini",
-        description="LLM provider: gemini, openai, anthropic, ollama",
-    )
-
-    # Gemini
+class LLMConfig(BaseSettings):
+    llm_provider: str = Field(default="gemini")
     gemini_api_key: str = Field(default="")
     gemini_model: str = Field(default="gemini-2.0-flash")
-
-    # OpenAI
     openai_api_key: str = Field(default="")
     openai_model: str = Field(default="gpt-4o-mini")
-
-    # Anthropic
     anthropic_api_key: str = Field(default="")
     anthropic_model: str = Field(default="claude-3-5-haiku-latest")
-
-    # Ollama
     ollama_base_url: str = Field(default="http://localhost:11434")
     ollama_model: str = Field(default="llama3")
 
-    # === TTS ===
-    tts_provider: str = Field(
-        default="edge",
-        description="TTS provider: edge, elevenlabs",
-    )
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+class TTSConfig(BaseSettings):
+    tts_provider: str = Field(default="edge")
     tts_voice: str = Field(default="it-IT-GiuseppeNeural")
     host_voice: str = Field(default="it-IT-GiuseppeNeural")
     guest_voice: str = Field(default="it-IT-ElsaNeural")
@@ -43,63 +26,57 @@ class Settings(MeshConfig):
     elevenlabs_voice: str = Field(default="")
     elevenlabs_guest_voice: str = Field(default="")
 
-    # === Newsletter Source ===
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+class PodcastConfig(BaseSettings):
     source_name: str = Field(default="newsletter")
     newsletter_url: str = Field(default="")
     archive_url: str = Field(default="")
-    rss_urls: list[str] = Field(default_factory=list)
+    rss_urls: List[str] = Field(default_factory=list)
     language: str = Field(default="italiano")
-
-    # === IMAP Settings ===
-    imap_host: str = Field(default="")
-    imap_user: str = Field(default="")
-    imap_password: str = Field(default="")
-    imap_folder: str = Field(default="INBOX")
-    imap_max_emails: int = Field(default=100, ge=1, le=1000)
-
-    # === UI Customization ===
-    ui_primary_color: str = Field(default="#2563eb")  # blue-600
-    ui_accent_color: str = Field(default="#3b82f6")   # blue-500
-
-    # === Scraping Selectors (default Beehiiv) ===
-    load_more_selector: str = Field(
-        default="button:has-text('Load More'), a:has-text('Load More')"
-    )
-    link_pattern: str = Field(default="/p/")
-    max_articles: int = Field(default=12, ge=1)
-
-    # === Processing ===
-    max_episode_minutes: int = Field(default=60, ge=1)
+    max_episode_minutes: int = Field(default=60)
     output_dir: Path = Field(default=Path("./output"))
     use_web_search: bool = Field(default=False)
-    podcast_format: str = Field(default="monologue", description="monologue or dialogue")
-
-    # === Intro / Outro ===
+    podcast_format: str = Field(default="monologue")
     intro_path: Optional[Path] = Field(default=None)
     outro_path: Optional[Path] = Field(default=None)
 
-    # === V3 Decentralized ===
-    ipfs_provider: str = Field(default="mock")  # mock, local, pinata
-    ipfs_api_key: str = Field(default="")
-    ipfs_api_secret: str = Field(default="")
-    ipfs_gateway_url: str = Field(default="https://ipfs.io/ipfs/")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    nostr_relays: list[str] = Field(
-        default_factory=lambda: ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.snort.social"]
-    )
-    nostr_secret_key: str = Field(default="")
-
-    # === Web Auth ===
+class WebConfig(BaseSettings):
+    web_port: int = Field(default=8000)
+    web_host: str = Field(default="0.0.0.0")
+    web_password: str = Field(default="")
+    api_token: str = Field(default="")
+    ui_primary_color: str = Field(default="#2563eb")
+    ui_accent_color: str = Field(default="#3b82f6")
     oauth_google_client_id: str = Field(default="")
     oauth_google_client_secret: str = Field(default="")
     oauth_github_client_id: str = Field(default="")
     oauth_github_client_secret: str = Field(default="")
     jwt_secret: str = Field(default="change-me")
-    web_password: str = Field(default="")
-    api_token: str = Field(default="")
-    web_port: int = Field(default=8000)
-    web_host: str = Field(default="0.0.0.0")
 
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+class IMAPConfig(BaseSettings):
+    imap_host: str = Field(default="")
+    imap_user: str = Field(default="")
+    imap_password: str = Field(default="")
+    imap_folder: str = Field(default="INBOX")
+    imap_max_emails: int = Field(default=100)
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+class ScraperConfig(BaseSettings):
+    load_more_selector: str = Field(default="button:has-text('Load More'), a:has-text('Load More')")
+    link_pattern: str = Field(default="/p/")
+    max_articles: int = Field(default=12)
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+# Unified Settings for backward compatibility if needed,
+# but components should preferably take specific configs.
+class Settings(MeshConfig, LLMConfig, TTSConfig, PodcastConfig, WebConfig, IMAPConfig, ScraperConfig):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -123,8 +100,4 @@ class Settings(MeshConfig):
             missing.append("NEWSLETTER_URL o ARCHIVE_URL")
         if missing:
             from podcast_generator.exceptions import ConfigError
-
-            raise ConfigError(
-                f"Missing required env vars: {', '.join(missing)}. "
-                f"Copy .env.example to .env and fill it in."
-            )
+            raise ConfigError(f"Missing required env vars: {', '.join(missing)}")

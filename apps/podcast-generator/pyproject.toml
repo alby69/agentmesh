@@ -5,6 +5,7 @@ description = "Transform newsletters into Italian podcast episodes"
 requires-python = ">=3.10"
 dependencies = [
     "agentmesh-core",
+    "agentmesh-llm",
     "agentmesh-relay",
     "agentmesh-vault",
     "playwright>=1.58.0",
@@ -24,6 +25,12 @@ dependencies = [
     "imap-tools>=1.6.0",
     "apscheduler>=3.10.0",
 ]
+
+[tool.uv.sources]
+agentmesh-core = { workspace = true }
+agentmesh-llm = { workspace = true }
+agentmesh-relay = { workspace = true }
+agentmesh-vault = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
