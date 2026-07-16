@@ -1,6 +1,4 @@
-from typing import Optional
 from agentmesh.relay.agent import NostrAgent
-from podcast_generator.config import Settings
 
 class NetworkAgent(NostrAgent):
     """Podcast-specific NetworkAgent extending AgentMesh Relay."""

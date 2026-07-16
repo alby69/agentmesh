@@ -1,4 +1,4 @@
-from agentmesh.core import BaseAgent, MeshConfig
+from agentmesh.core import BaseAgent
 
 class ProjectAgent(BaseAgent):
     """Manages the lifecycle of a project in MoTeDico."""

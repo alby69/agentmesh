@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock
 from agentmesh.relay.agent import NostrAgent
 from agentmesh.core import MeshConfig
-from agentmesh.core.models import AgentMessage
 
 @pytest.mark.asyncio
 async def test_nostr_agent_rate_limiting():

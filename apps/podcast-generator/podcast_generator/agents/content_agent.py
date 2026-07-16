@@ -1,5 +1,3 @@
-from pathlib import Path
-from typing import Optional, List
 from podcast_generator.agents.base import BaseAgent
 from podcast_generator.config import Settings
 from podcast_generator.models import Newsletter, Episode

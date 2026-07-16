@@ -1,9 +1,7 @@
-import asyncio
-import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pydantic import BaseModel
 from agentmesh.core import BaseAgent, MeshConfig
-from agentmesh.core.models import AgentMessage, AgentCapability
+from agentmesh.core.models import AgentMessage
 
 class WorkflowStep(BaseModel):
     name: str
@@ -58,7 +56,7 @@ class WorkflowAgent(BaseAgent):
             self.logger.info(f"Hiring agent {provider.name} ({provider.public_key}) for {step.name}")
 
             # 3. Send Task Message
-            msg = AgentMessage(
+            AgentMessage(
                 sender=self.config.agent_id, # Should be the real pubkey in a full implementation
                 receiver=provider.public_key,
                 type="task",

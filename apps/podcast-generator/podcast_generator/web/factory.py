@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import asyncio
-from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI
-from starlette.middleware.sessions import SessionMiddleware
 
-from podcast_generator.config import Settings, WebConfig
+from podcast_generator.config import Settings
 from podcast_generator.web.db import init_db
 from podcast_generator.web.auth import init_oauth
 from podcast_generator.agents.manager import get_agents

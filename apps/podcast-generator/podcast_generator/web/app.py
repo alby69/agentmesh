@@ -6,7 +6,6 @@ import math
 import re
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -303,7 +302,6 @@ async def imap_debug(_=Depends(get_current_user)):
         return JSONResponse({"error": "Configura prima le credenziali"}, status_code=400)
     try:
         from imap_tools import MailBox
-        import imaplib
 
         results = {}
         with MailBox(_cfg.imap_host).login(_cfg.imap_user, _cfg.imap_password) as mb:
@@ -595,7 +593,7 @@ async def _run_generation(job_id: str, article_urls: list[str], podcast_format: 
                 file_path=str(episode.audio_path)
             )
 
-        ep_id = add_episode(
+        add_episode(
             title=episode.title,
             url=episode.url,
             date=episode.date_str,
@@ -629,7 +627,7 @@ async def generate(
     # Try form data first (from checkbox form in articles.html)
     form = await request.form()
     article_urls: list[str] = form.getlist("article_urls")
-    newsletter_url: str = form.get("newsletter_url", "")
+    form.get("newsletter_url", "")
     podcast_format: str = form.get("podcast_format", "monologue")
 
     # Fall back to JSON body (from article detail hx-vals)
@@ -637,7 +635,7 @@ async def generate(
         try:
             body = await request.json()
             article_urls = body.get("article_urls", [])
-            newsletter_url = body.get("newsletter_url", "")
+            body.get("newsletter_url", "")
             podcast_format = body.get("podcast_format", podcast_format)
         except Exception:
             raise HTTPException(status_code=400, detail="article_urls is required")

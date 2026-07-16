@@ -1,4 +1,3 @@
-import asyncio
 from typing import List, Dict, Any
 from pydantic import BaseModel
 from agentmesh.core import BaseAgent, MeshConfig
@@ -32,7 +31,7 @@ class ProjectAgent(BaseAgent):
     async def sync_state(self, vault_agent):
         """Saves project state to the distributed storage layer."""
         self.logger.info("Syncing project state to IPFS...")
-        data = {
+        {
             "blueprint": self.blueprint.model_dump(),
             "state": self.state
         }
