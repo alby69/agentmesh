@@ -21,8 +21,14 @@ try:
     )
 except ImportError:
     Client = None
+    Keys = None
+    EventBuilder = None
     Tag = None
+    Event = object
+    Filter = None
     Kind = None
+    UnsignedEvent = None
+    Nip44 = None
     HandleNotification = object
 
 # Custom Kind for Agent Registry (inspired by NIP-31 but focused on AgentMesh)
