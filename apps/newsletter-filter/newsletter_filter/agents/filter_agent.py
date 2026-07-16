@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 from agentmesh.core import BaseAgent, MeshConfig, AgentMessage
 from agentmesh.llm.base import BaseLLMProvider
 

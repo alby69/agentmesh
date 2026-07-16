@@ -126,7 +126,7 @@ async def main_async():
 
         if relevant:
             relevant_count += 1
-            print(f"   Sintesi:")
+            print("   Sintesi:")
             print(f"     {analysis.get('summary', '')}")
             points = analysis.get("key_points", [])
             if points:
