@@ -16,6 +16,7 @@ dependencies = [
     "typer>=0.15.0",
     "rich>=13.9.0",
     "fastapi>=0.115.0",
+    "itsdangerous",
     "uvicorn>=0.30.0",
     "jinja2>=3.1.0",
     "python-multipart>=0.0.9",
