@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">
+    <i class="fa-solid fa-gear text-blue-400 mr-2"></i> Impostazioni
+</h1>
+
+<form hx-post="/settings" hx-target="#settings-result" hx-swap="innerHTML"
+    class="space-y-8">
+
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-lg font-semibold mb-4">
+            <i class="fa-solid fa-rss text-orange-400 mr-2"></i> RSS Feed
+        </h2>
+        <div>
+            <label class="block text-sm text-gray-400 mb-1">URLs (uno per riga o separati da virgola)</label>
+            <textarea name="rss_urls" rows="3"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                placeholder="https://stefanogatti.substack.com/feed">{{ settings.get('rss_urls', '') }}</textarea>
+        </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-lg font-semibold mb-4">
+            <i class="fa-solid fa-envelope text-purple-400 mr-2"></i> Email (IMAP)
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Host IMAP</label>
+                <input type="text" name="imap_host" value="{{ settings.get('imap_host', '') }}"
+                    placeholder="imap.gmail.com"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Cartella</label>
+                <input type="text" name="imap_folder" value="{{ settings.get('imap_folder', 'INBOX') }}"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Email / Utente</label>
+                <input type="text" name="imap_user" value="{{ settings.get('imap_user', '') }}"
+                    placeholder="your-email@gmail.com"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Password (App Password)</label>
+                <input type="password" name="imap_password" value="{{ settings.get('imap_password', '') }}"
+                    placeholder="••••••••"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-lg font-semibold mb-4">
+            <i class="fa-solid fa-magnifying-glass text-blue-400 mr-2"></i> Filtraggio
+        </h2>
+        <div class="mb-4">
+            <label class="block text-sm text-gray-400 mb-1">Query Semantica Predefinita</label>
+            <input type="text" name="default_query" value="{{ settings.get('default_query', '') }}"
+                placeholder="Risorse Umane e Intelligenza Artificiale"
+                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+        </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-lg font-semibold mb-4">
+            <i class="fa-solid fa-brain text-green-400 mr-2"></i> LLM
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Provider</label>
+                <select name="llm_provider"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                    <option value="openai" {{ 'selected' if settings.get('llm_provider', 'openai') == 'openai' }}>OpenAI</option>
+                    <option value="anthropic" {{ 'selected' if settings.get('llm_provider') == 'anthropic' }}>Anthropic</option>
+                    <option value="ollama" {{ 'selected' if settings.get('llm_provider') == 'ollama' }}>Ollama</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Modello</label>
+                <input type="text" name="llm_model" value="{{ settings.get('llm_model', 'gpt-4o-mini') }}"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+        <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">
+            <i class="fa-solid fa-floppy-disk mr-1"></i> Salva Impostazioni
+        </button>
+        <div id="settings-result"></div>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-gray-400 text-sm mb-1">Articoli Totali</div>
+        <div class="text-3xl font-bold text-white">{{ total }}</div>
+    </div>
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-gray-400 text-sm mb-1">Rilevanti</div>
+        <div class="text-3xl font-bold text-green-400">{{ relevant }}</div>
+    </div>
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-gray-400 text-sm mb-1">Ultima Scansione</div>
+        <div class="text-lg font-semibold text-white">
+            {% if jobs %}
+                {{ jobs[0].started_at[:16] if jobs[0].started_at else 'Mai' }}
+            {% else %}
+                Mai
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
+    <h2 class="text-lg font-semibold mb-4">
+        <i class="fa-solid fa-radar text-blue-400 mr-2"></i> Avvia Scansione
+    </h2>
+    <form hx-post="/scan" hx-target="#scan-result" hx-swap="innerHTML">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Tipo Sorgente</label>
+                <select name="source_type" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                    <option value="rss">RSS Feed</option>
+                    <option value="imap">Email (IMAP)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Sorgente (URL o Cartella)</label>
+                <input type="text" name="source" placeholder="Lascia vuoto per default"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-400 mb-1">Query Semantica</label>
+                <input type="text" name="query" placeholder="Lascia vuoto per default"
+                    class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+        <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition">
+            <i class="fa-solid fa-play mr-1"></i> Avvia
+        </button>
+    </form>
+    <div id="scan-result"></div>
+</div>
+
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">
+            <i class="fa-solid fa-newspaper text-blue-400 mr-2"></i> Articoli
+        </h2>
+        <div class="flex gap-2">
+            <button hx-get="/articles" hx-target="#articles-table-container" hx-swap="innerHTML"
+                class="text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1 rounded-lg transition">
+                Tutti
+            </button>
+            <button hx-get="/articles?relevant_only=true" hx-target="#articles-table-container" hx-swap="innerHTML"
+                class="text-xs bg-green-900/50 hover:bg-green-900 text-green-400 px-3 py-1 rounded-lg transition">
+                Solo Rilevanti
+            </button>
+            <form hx-post="/clear" hx-target="#articles-table-container" hx-swap="innerHTML"
+                hx-confirm="Cancellare tutti gli articoli?">
+                <button type="submit"
+                    class="text-xs bg-red-900/50 hover:bg-red-900 text-red-400 px-3 py-1 rounded-lg transition">
+                    <i class="fa-solid fa-trash mr-1"></i> Pulisci
+                </button>
+            </form>
+        </div>
+    </div>
+    <div id="articles-table-container">
+        {% include "articles_table.html" %}
+    </div>
+</div>
+
+{% if jobs %}
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+    <h2 class="text-lg font-semibold mb-4">
+        <i class="fa-solid fa-clock-rotate-left text-blue-400 mr-2"></i> Scansioni Recenti
+    </h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-gray-400 border-b border-gray-800">
+                    <th class="text-left py-2">ID</th>
+                    <th class="text-left py-2">Tipo</th>
+                    <th class="text-left py-2">Sorgente</th>
+                    <th class="text-left py-2">Query</th>
+                    <th class="text-left py-2">Stato</th>
+                    <th class="text-left py-2">Risultati</th>
+                    <th class="text-left py-2">Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr class="border-b border-gray-800/50 hover:bg-gray-800/30">
+                    <td class="py-2 text-gray-500">#{{ job.id }}</td>
+                    <td class="py-2">
+                        <span class="bg-gray-800 px-2 py-0.5 rounded text-xs">{{ job.source_type }}</span>
+                    </td>
+                    <td class="py-2 text-gray-300 max-w-[200px] truncate">{{ job.source }}</td>
+                    <td class="py-2 text-gray-400 max-w-[200px] truncate">{{ job.query or '-' }}</td>
+                    <td class="py-2">
+                        {% if job.status == 'completed' %}
+                            <span class="text-green-400"><i class="fa-solid fa-check"></i> Completata</span>
+                        {% elif job.status == 'running' %}
+                            <span class="text-blue-400"><i class="fa-solid fa-spinner fa-spin"></i> In corso</span>
+                        {% else %}
+                            <span class="text-gray-500">{{ job.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2">
+                        <span class="text-green-400">{{ job.relevant_articles }}</span>
+                        <span class="text-gray-500">/</span>
+                        <span>{{ job.total_articles }}</span>
+                    </td>
+                    <td class="py-2 text-gray-500 text-xs">{{ job.started_at[:16] if job.started_at else '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

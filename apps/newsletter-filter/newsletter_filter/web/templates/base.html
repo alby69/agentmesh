@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newsletter Filter — AgentMesh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+    <nav class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3">
+                <i class="fa-solid fa-filter text-blue-400 text-xl"></i>
+                <span class="font-bold text-lg">Newsletter Filter</span>
+                <span class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full">AgentMesh</span>
+            </a>
+            <div class="flex items-center gap-4 text-sm">
+                <a href="/" class="text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-house mr-1"></i> Dashboard
+                </a>
+                <a href="/settings" class="text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-gear mr-1"></i> Impostazioni
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="border-t border-gray-800 mt-16 py-6 text-center text-xs text-gray-600">
+        Newsletter Filter &mdash; Powered by AgentMesh
+    </footer>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import asyncio
 import argparse
+import json
 import sys
 import os
 import logging
@@ -40,6 +41,12 @@ async def main_async():
         type=int,
         default=5,
         help="Maximum number of articles/emails to fetch and process (default: 5)"
+    )
+    parser.add_argument(
+        "--output",
+        choices=["text", "json"],
+        default="text",
+        help="Output format: 'text' (default) or 'json'"
     )
 
     args = parser.parse_args()
@@ -104,6 +111,10 @@ async def main_async():
     )
 
     # Output formatted report
+    if args.output == "json":
+        print(json.dumps(results, ensure_ascii=False, indent=2))
+        return
+
     print("\n" + "="*80)
     print("COGNITIVE NEWSLETTER FILTERING REPORT")
     print(f"Source Type: {source_type.upper()}")

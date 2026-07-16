@@ -1,0 +1,75 @@
+{% if articles %}
+<div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-gray-400 border-b border-gray-800">
+                <th class="text-left py-2 w-8">#</th>
+                <th class="text-left py-2">Titolo</th>
+                <th class="text-left py-2 w-24">Rilevanza</th>
+                <th class="text-left py-2 w-20">Score</th>
+                <th class="text-left py-2">Spiegazione</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for article in articles %}
+            <tr class="border-b border-gray-800/50 hover:bg-gray-800/30 cursor-pointer"
+                onclick="this.querySelector('.detail-row').classList.toggle('hidden')">
+                <td class="py-3 text-gray-500">{{ loop.index }}</td>
+                <td class="py-3">
+                    <div class="font-medium text-white">{{ article.title }}</div>
+                    <div class="text-xs text-gray-500 truncate max-w-md">{{ article.url }}</div>
+                </td>
+                <td class="py-3">
+                    {% if article.relevant %}
+                        <span class="bg-green-900/50 text-green-400 px-2 py-0.5 rounded-full text-xs font-medium">
+                            <i class="fa-solid fa-circle-check mr-1"></i>Rilevante
+                        </span>
+                    {% else %}
+                        <span class="bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full text-xs font-medium">
+                            <i class="fa-solid fa-circle-xmark mr-1"></i>Non rilevante
+                        </span>
+                    {% endif %}
+                </td>
+                <td class="py-3 font-mono text-sm">{{ "%.2f"|format(article.score) }}</td>
+                <td class="py-3 text-gray-400 text-xs max-w-xs truncate">{{ article.justification }}</td>
+            </tr>
+            {% if article.relevant %}
+            <tr class="detail-row hidden">
+                <td colspan="5" class="px-4 pb-4">
+                    <div class="bg-gray-800/50 rounded-lg p-4 space-y-3">
+                        {% if article.summary %}
+                        <div>
+                            <div class="text-xs text-gray-400 font-semibold mb-1">Sintesi</div>
+                            <div class="text-sm text-gray-300">{{ article.summary }}</div>
+                        </div>
+                        {% endif %}
+                        {% if article.key_points %}
+                        <div>
+                            <div class="text-xs text-gray-400 font-semibold mb-1">Punti Chiave</div>
+                            <ul class="list-disc list-inside text-sm text-gray-300 space-y-1">
+                                {% for point in article.key_points %}
+                                <li>{{ point }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        <div class="text-xs text-gray-500">
+                            {{ article.date or 'Data non disponibile' }}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="text-xs text-gray-500 mt-3">
+    Mostrando {{ articles|length }} articoli ({{ relevant }} rilevanti su {{ total }} totali)
+</div>
+{% else %}
+<div class="text-center py-12 text-gray-500">
+    <i class="fa-solid fa-inbox text-4xl mb-3 block"></i>
+    <p>Nessun articolo trovato. Avvia una scansione per iniziare.</p>
+</div>
+{% endif %}

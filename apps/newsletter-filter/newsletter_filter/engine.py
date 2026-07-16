@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Dict, Any, Optional
 from newsletter_filter.fetcher import fetch_rss, fetch_imap, ArticleItem
@@ -6,26 +7,57 @@ from agentmesh.core import AgentMessage
 
 logger = logging.getLogger("newsletter_filter.engine")
 
+DEFAULT_MAX_CONCURRENT = 3
+
+
+async def _process_one_article(
+    article: ArticleItem,
+    criteria: str,
+    agent: FilterAgent,
+    semaphore: asyncio.Semaphore,
+) -> Optional[Dict[str, Any]]:
+    task_msg = AgentMessage(
+        sender="pipeline-orchestrator",
+        receiver=agent.config.agent_id,
+        message_type="task",
+        payload={
+            "source": article.url,
+            "title": article.title,
+            "contents": article.content,
+            "criteria": criteria,
+        },
+    )
+
+    async with semaphore:
+        try:
+            response_msg = await agent.handle_message(task_msg)
+            if response_msg.payload.get("status") == "success":
+                analysis = response_msg.payload.get("analysis", {})
+                return {
+                    "title": article.title,
+                    "url": article.url,
+                    "date": article.date,
+                    "analysis": analysis,
+                }
+            logger.warning("FilterAgent rejected article: %s", article.title)
+        except Exception as e:
+            logger.error("Error processing %s: %s", article.title, e)
+    return None
+
+
 async def process_filtering(
     source_type: str,
     source_url_or_folder: str,
     criteria: str,
     agent: FilterAgent,
     imap_config: Optional[Dict[str, Any]] = None,
-    limit: int = 10
+    limit: int = 10,
+    max_concurrent: int = DEFAULT_MAX_CONCURRENT,
 ) -> List[Dict[str, Any]]:
-    """
-    Orchestrates the fetching and filtering pipeline.
-
-    Args:
-        source_type: 'rss' or 'imap'
-        source_url_or_folder: RSS feed URL or IMAP folder name
-        criteria: semantic search criteria/query
-        agent: FilterAgent instance
-        imap_config: dictionary with host, user, password if source_type is 'imap'
-        limit: max articles to fetch
-    """
-    logger.info(f"Starting pipeline. Source: {source_type} ({source_url_or_folder}), Query: '{criteria}'")
+    logger.info(
+        "Starting pipeline. Source: %s (%s), Query: '%s'",
+        source_type, source_url_or_folder, criteria,
+    )
 
     articles: List[ArticleItem] = []
     if source_type.lower() == "rss":
@@ -39,45 +71,19 @@ async def process_filtering(
             user=imap_config.get("user", ""),
             password=imap_config.get("password", ""),
             folder=source_url_or_folder,
-            limit=limit
+            limit=limit,
         )
     else:
-        logger.error(f"Unsupported source type: {source_type}")
+        logger.error("Unsupported source type: %s", source_type)
         return []
 
-    logger.info(f"Fetched {len(articles)} articles. Sending to FilterAgent for analysis...")
+    logger.info("Fetched %d articles. Analyzing with %d concurrent workers...", len(articles), max_concurrent)
 
-    filtered_results = []
-    for article in articles[:limit]:
-        # Construct standardized AgentMessage
-        task_msg = AgentMessage(
-            sender="pipeline-orchestrator",
-            receiver=agent.config.agent_id,
-            message_type="task",
-            payload={
-                "source": article.url,
-                "title": article.title,
-                "contents": article.content,
-                "criteria": criteria
-            }
-        )
+    semaphore = asyncio.Semaphore(max_concurrent)
+    tasks = [
+        _process_one_article(article, criteria, agent, semaphore)
+        for article in articles[:limit]
+    ]
+    results = await asyncio.gather(*tasks)
 
-        try:
-            # Process via agent's message interface
-            response_msg = await agent.handle_message(task_msg)
-
-            # Extract analysis results from payload
-            if response_msg.payload.get("status") == "success":
-                analysis = response_msg.payload.get("analysis", {})
-                filtered_results.append({
-                    "title": article.title,
-                    "url": article.url,
-                    "date": article.date,
-                    "analysis": analysis
-                })
-            else:
-                logger.warning(f"FilterAgent rejected or failed to process article: {article.title}")
-        except Exception as e:
-            logger.error(f"Error executing FilterAgent on {article.title}: {e}")
-
-    return filtered_results
+    return [r for r in results if r is not None]

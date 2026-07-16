@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Dict, Any
+import re
+from typing import Dict, Any, List
 from agentmesh.core import BaseAgent, MeshConfig, AgentMessage
 from agentmesh.llm.base import BaseLLMProvider
 
@@ -114,13 +115,35 @@ Fornisci la tua risposta ESCLUSIVAMENTE come un oggetto JSON valido con la segue
             analysis = json.loads(cleaned_response)
             return analysis
         except Exception as e:
-            self.logger.error(f"Error during LLM filtering generation or JSON parsing: {e}")
-            # Fallback check
-            is_relevant_fallback = any(word.lower() in content.lower() for word in criteria.split())
-            return {
-                "relevant": is_relevant_fallback,
-                "score": 0.5 if is_relevant_fallback else 0.0,
-                "summary": "Estrazione fallita per errore tecnico. " + content[:200] + "...",
-                "key_points": [],
-                "justification": f"Errore durante l'elaborazione LLM: {str(e)}"
-            }
+            self.logger.error("Error during LLM filtering or JSON parsing: %s", e)
+            return self._fallback_analysis(content, criteria, str(e))
+
+    @staticmethod
+    def _extract_keywords(criteria: str) -> List[str]:
+        keywords = []
+        for phrase in re.split(r"[,;]", criteria):
+            phrase = phrase.strip().lower()
+            if phrase:
+                keywords.append(phrase)
+        words = criteria.lower().split()
+        for w in words:
+            if len(w) > 2 and w not in ("e", "di", "del", "dell", "su", "per", "che", "gli", "une"):
+                keywords.append(w)
+        return list(dict.fromkeys(keywords))
+
+    def _fallback_analysis(self, content: str, criteria: str, error: str) -> Dict[str, Any]:
+        content_lower = content.lower()
+        keywords = self._extract_keywords(criteria)
+
+        matched = [kw for kw in keywords if kw in content_lower]
+        total = len(keywords) or 1
+        score = round(len(matched) / total, 2) if matched else 0.0
+        is_relevant = score >= 0.2
+
+        return {
+            "relevant": is_relevant,
+            "score": min(score, 1.0),
+            "summary": "Estrazione LLM fallita. Anteprima: " + content[:200] + "...",
+            "key_points": matched[:5],
+            "justification": f"Fallback keyword-matching ({len(matched)}/{total} keywords). Errore LLM: {error}",
+        }
