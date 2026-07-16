@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Callable, Any
+from typing import Optional, Dict, Callable
 from agentmesh.core import MeshOrchestrator
 from podcast_generator.agents.content_agent import ContentAgent
 from podcast_generator.agents.network_agent import NetworkAgent

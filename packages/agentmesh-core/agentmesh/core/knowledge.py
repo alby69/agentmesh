@@ -1,6 +1,5 @@
 import asyncio
-import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict
 from agentmesh.core import BaseAgent, MeshConfig
 from agentmesh.core.models import AgentMessage, AgentReputation, KnowledgeFact
 

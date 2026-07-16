@@ -1,5 +1,5 @@
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any
 from threading import Lock
 
 class MetricsCollector:

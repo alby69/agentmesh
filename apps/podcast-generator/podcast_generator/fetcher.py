@@ -56,7 +56,7 @@ _DURATION_RE = re.compile(r"•\s*(\d+\s*min\s*read)")
 
 def _parse_article_text(text: str) -> dict:
     """Parse Beehiiv-style article text into date, duration, title, description.
-    
+
     Input format: "May 26, 2026•3 min readTitleHereDescriptionHere...SourceName"
     """
     result = {"date": "", "duration": "", "title": text, "description": ""}
@@ -489,7 +489,7 @@ async def fetch_email_content(
 
         is_gmail = "gmail" in imap_host.lower()
         uid_int = int(uid)
-        uid_bytes = str(uid_int).encode()
+        str(uid_int).encode()
 
         def _build_newsletter(subject: str, html_body: str, text_body: str, date_val) -> Newsletter:
             if raw_html and html_body:

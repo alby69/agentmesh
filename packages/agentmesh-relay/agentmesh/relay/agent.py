@@ -1,8 +1,6 @@
 import asyncio
-import json
-import logging
 import time
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any
 from agentmesh.core import BaseAgent, MeshConfig
 from agentmesh.core.models import AgentCapability, AgentMessage
 
@@ -21,8 +19,14 @@ try:
     )
 except ImportError:
     Client = None
+    Keys = None
+    EventBuilder = None
     Tag = None
+    Event = object
+    Filter = None
     Kind = None
+    UnsignedEvent = None
+    Nip44 = None
     HandleNotification = object
 
 # Custom Kind for Agent Registry (inspired by NIP-31 but focused on AgentMesh)
@@ -121,7 +125,7 @@ class NostrAgent(BaseAgent):
             try:
                 author = event.author()
                 pubkey = author.to_hex() if author else "unknown"
-            except:
+            except Exception:
                 pubkey = "unknown"
 
             if self._is_rate_limited(pubkey):

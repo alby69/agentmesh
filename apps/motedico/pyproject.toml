@@ -15,6 +15,9 @@ agentmesh-core = { workspace = true }
 agentmesh-relay = { workspace = true }
 agentmesh-vault = { workspace = true }
 
+[tool.hatch.build.targets.wheel]
+packages = ["motedico"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

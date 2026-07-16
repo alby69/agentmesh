@@ -1,5 +1,3 @@
-import asyncio
-from typing import List, Dict, Any
 from agentmesh.core import BaseAgent, MeshConfig
 from agentmesh.core.models import AgentMessage
 
@@ -45,7 +43,7 @@ class WalletAgent(BaseAgent):
                 m = re.search(r"lnbc(\d+)", invoice)
                 if m:
                     return int(m.group(1))
-            except:
+            except Exception:
                 pass
         return 10 # Default fallback
 

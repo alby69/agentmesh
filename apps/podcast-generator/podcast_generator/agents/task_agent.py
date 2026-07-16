@@ -1,8 +1,6 @@
-from typing import List, Optional
-from agentmesh.core import BaseAgent, MeshConfig
+from agentmesh.core import BaseAgent
 from agentmesh.core.models import AgentMessage
 from podcast_generator.config import Settings
-from podcast_generator.models import Newsletter, Episode
 
 class TaskAgent(BaseAgent):
     """

@@ -9,7 +9,7 @@ from authlib.jose import JsonWebToken
 from fastapi import Request, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from podcast_generator.web.db import get_user, get_user_by_email, create_user
+from podcast_generator.web.db import get_user
 
 security = HTTPBearer(auto_error=False)
 

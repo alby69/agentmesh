@@ -149,7 +149,7 @@ def v3_generate():
                 rprint("[yellow]V3 Flow: Publishing to Nostr...[/]")
                 event_id = await network_agent.publish_podcast(episode.title, cid, {})
                 if event_id:
-                    rprint(f"[bold green]V3 Flow COMPLETE![/]")
+                    rprint("[bold green]V3 Flow COMPLETE![/]")
                     rprint(f"Nostr Event ID: {event_id.to_bech32()}")
                     rprint(f"IPFS Gateway: {await storage_agent.get_file_url(cid)}")
 
