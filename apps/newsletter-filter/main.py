@@ -20,6 +20,17 @@ async def main_async():
         description="Newsletter Filter & Extraction CLI tool (AgentMesh App)"
     )
     parser.add_argument(
+        "--server",
+        action="store_true",
+        help="Start the FastAPI HTMX Web Server instead of CLI"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8001,
+        help="Port to bind the web server to (default: 8001)"
+    )
+    parser.add_argument(
         "--source-type",
         choices=["rss", "imap"],
         default="rss",
@@ -43,6 +54,12 @@ async def main_async():
     )
 
     args = parser.parse_args()
+
+    if args.server:
+        import uvicorn
+        logger.info(f"Starting Newsletter Filter Web Server on port {args.port}...")
+        uvicorn.run("newsletter_filter.web.app:app", host="0.0.0.0", port=args.port, reload=True)
+        return
 
     # Load settings from environment variables/dotenv file
     settings = FilterSettings()

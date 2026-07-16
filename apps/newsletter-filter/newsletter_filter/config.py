@@ -23,6 +23,16 @@ class FilterSettings(BaseSettings):
         env="FILTER_DEFAULT_QUERY"
     )
 
+    # Inter-App Communication Pipeline settings
+    podcast_gen_url: str = Field(
+        default="http://localhost:8000",
+        env="FILTER_PODCAST_GEN_URL"
+    )
+    podcast_gen_api_token: str = Field(
+        default="",
+        env="FILTER_PODCAST_GEN_API_TOKEN"
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
