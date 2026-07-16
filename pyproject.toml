@@ -20,6 +20,13 @@ dev = [
     "pydantic-settings>=2.0.0",
 ]
 
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+
 [project.scripts]
 agentmesh = "agentmesh.studio.main:app"
 

@@ -5,7 +5,6 @@ class GeminiProvider(BaseLLMProvider):
     def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
         try:
             from google import genai
-            from google.genai import types
         except ImportError:
             raise ImportError("google-genai is required for GeminiProvider. Install it with `pip install google-genai`.")
 

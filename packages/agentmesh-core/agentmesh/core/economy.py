@@ -43,7 +43,7 @@ class WalletAgent(BaseAgent):
                 m = re.search(r"lnbc(\d+)", invoice)
                 if m:
                     return int(m.group(1))
-            except:
+            except Exception:
                 pass
         return 10 # Default fallback
 
