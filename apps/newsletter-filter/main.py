@@ -59,13 +59,21 @@ async def main_async():
         default="text",
         help="Output format: 'text' (default) or 'json'"
     )
+    parser.add_argument(
+        "--daemon",
+        action="store_true",
+        help="Start in daemon mode: web server + APScheduler + Nostr mesh agent"
+    )
 
     args = parser.parse_args()
 
-    if args.server:
+    if args.server or args.daemon:
         import uvicorn
-        logger.info(f"Starting Newsletter Filter Web Server on port {args.port}...")
-        uvicorn.run("newsletter_filter.web.app:app", host="0.0.0.0", port=args.port, reload=True)
+        if args.daemon:
+            logger.info(f"Starting Newsletter Filter in DAEMON mode (server + scheduler + mesh) on port {args.port}...")
+        else:
+            logger.info(f"Starting Newsletter Filter Web Server on port {args.port}...")
+        uvicorn.run("newsletter_filter.web.app:app", host="0.0.0.0", port=args.port, reload=not args.daemon)
         return
 
     # Load settings from environment variables/dotenv file

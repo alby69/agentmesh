@@ -1,7 +1,5 @@
 import os
 import pytest
-import json
-import sqlite3
 from unittest.mock import MagicMock, AsyncMock, patch
 
 # Set mock db path environment variable before any imports
@@ -11,9 +9,9 @@ os.environ["FILTER_DB_PATH"] = MOCK_DB_PATH
 from fastapi.testclient import TestClient
 from newsletter_filter.web.db import (
     init_db, get_db_settings, save_db_settings,
-    add_or_update_article, get_articles, clear_articles, get_connection
+    add_or_update_article, get_articles
 )
-from newsletter_filter.web.app import app, load_effective_settings, _scan_jobs
+from newsletter_filter.web.app import app, load_effective_settings
 
 
 @pytest.fixture(autouse=True)

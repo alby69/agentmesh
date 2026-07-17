@@ -25,7 +25,7 @@ Questo documento presenta la pianificazione delle fasi per l'applicazione **News
                               │
                               ▼
 ┌───────────────────────────────────────────────────────────┐
-│ FASE 3: Mesh Automation & A2A Economy                    │ <--- [PIANIFICATO / IN CORSO]
+│ FASE 3: Mesh Automation & A2A Economy                    │ <--- [COMPLETATO] │
 │ - Registrazione del FilterAgent sulla rete Nostr          │
 │ - Schedulazione automatica delle query via APScheduler    │
 │ - Abilitazione di micropagamenti Lightning/Cashu per query│
@@ -54,7 +54,7 @@ Questa fase introduce l'interfaccia utente web e l'integrazione asincrona tra le
 
 ---
 
-### FASE 3: Mesh Automation & A2A Economy [PIANIFICATO]
-- **Integrazione Nostr**: Abilitazione della comunicazione asincrona tra `FilterAgent` e altri agenti tramite la rete Nostr (Kind 29001).
-- **Automazione via APScheduler**: Schedulazione periodica del fetch e del filtraggio automatico delle email e dei feed RSS (es. ogni mattina alle 8:00) per trovare i contenuti rilevanti senza intervento umano.
-- **A2A Economy**: Abilitazione di micropagamenti (Lightning/Cashu) per l'interrogazione e il recupero dei contenuti filtrati da altri agenti.
+### FASE 3: Mesh Automation & A2A Economy [COMPLETATO]
+- **Integrazione Nostr**: `FilterMeshAgent` estende `NostrAgent` e si registra automaticamente sulla rete Nostr (Kind 30311) con le sue capacità (newsletter-filter, content-analysis, semantic-scoring). Pubblica gli articoli rilevanti come eventi Kind 29001.
+- **Automazione via APScheduler**: `MeshScheduler` esegue scansioni RSS automatiche ogni giorno alle 8:00 e IMAP alle 9:00. La modalità `--daemon` avvia server web + scheduler + mesh agent insieme.
+- **A2A Economy**: API REST `/api/v1/a2a/*` per agenti esterni: query articoli con Cashu token, registrazione micropagamenti, scan remoto, pubblicazione su mesh. Endpoint `/api/v1/a2a/pay` registra pagamenti Lightning/Cashu.

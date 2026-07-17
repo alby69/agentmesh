@@ -6,10 +6,10 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
-from fastapi import FastAPI, Request, Form, Query, Depends, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, Request, Form, Query, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from httpx import AsyncClient
 
@@ -20,6 +20,11 @@ from newsletter_filter.web.db import (
 )
 from newsletter_filter.agents.filter_agent import FilterAgent, FilterAgentConfig
 from newsletter_filter.fetcher import fetch_rss, fetch_imap
+from newsletter_filter.mesh import (
+    FilterMeshAgent, verify_cashu_token, record_micropayment, get_micropayment_history,
+)
+from newsletter_filter.scheduler import MeshScheduler
+from agentmesh.core import MeshConfig
 from agentmesh.llm.factory import LLMProviderFactory
 
 # Logger setup
@@ -31,6 +36,8 @@ templates = Jinja2Templates(
 
 # Shared memory/state for scanning jobs
 _scan_jobs: Dict[str, Dict[str, Any]] = {}
+_scheduler: Optional[MeshScheduler] = None
+_mesh_agent: Optional[FilterMeshAgent] = None
 
 
 def load_effective_settings() -> FilterSettings:
@@ -151,6 +158,8 @@ async def _run_scanning_background(job_id: str, source_type: str):
 
 @asynccontextmanager
 async def _lifespan(app_instance: FastAPI):
+    global _scheduler, _mesh_agent
+
     # Initialize the SQLite Database
     init_db()
     # Save default settings if table is empty
@@ -167,7 +176,31 @@ async def _lifespan(app_instance: FastAPI):
             "rss_urls": ",".join(default_s.rss_urls) if default_s.rss_urls else "https://stefanogatti.substack.com/feed",
             "default_query": default_s.default_query
         })
+
+    # Start APScheduler for periodic auto-scan
+    _scheduler = MeshScheduler()
+    await _scheduler.start()
+    logger.info("Periodic auto-scan scheduler started.")
+
+    # Start Nostr mesh agent (best-effort)
+    try:
+        nostr_secret = os.getenv("FILTER_NOSTR_SECRET_KEY")
+        mesh_config = MeshConfig(agent_id="newsletter-filter-agent")
+        _mesh_agent = FilterMeshAgent(mesh_config, secret_key=nostr_secret)
+        if hasattr(_mesh_agent, "start") and _mesh_agent.client:
+            await _mesh_agent.start()
+            await _mesh_agent.register_capabilities()
+            logger.info("Nostr mesh agent started and capabilities registered.")
+    except Exception as e:
+        logger.warning(f"Nostr mesh agent not started (non-critical): {e}")
+
     yield
+
+    # Shutdown
+    if _scheduler:
+        await _scheduler.stop()
+    if _mesh_agent and hasattr(_mesh_agent, "stop"):
+        await _mesh_agent.stop()
 
 
 app = FastAPI(
@@ -336,7 +369,7 @@ async def check_scan_status_route(job_id: str):
     if status == "completed":
         # Returns a nice success notification that triggers a load of the table container!
         return HTMLResponse(
-            content=f"""
+            content="""
             <div hx-get="/articles" hx-trigger="load" hx-target="#articles-table-container"
                  class="bg-green-500/10 border border-green-500/30 text-green-400 p-4 rounded-xl mt-4 flex justify-between items-center">
                 <div class="flex items-center gap-3 font-semibold text-sm">
@@ -437,3 +470,88 @@ async def export_podcast_route(request: Request):
             </div>
             """
         )
+
+
+# ─────────────────────────────────────────────────────────────
+# A2A Economy REST API (for agent-to-agent queries)
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/api/v1/a2a/articles")
+async def a2a_articles(
+    criteria: Optional[str] = Query(None),
+    limit: int = Query(10),
+    cashu_token: Optional[str] = Query(None),
+):
+    """Query filtered articles via A2A protocol. Requires Cashu micropayment token."""
+    if cashu_token and not verify_cashu_token(cashu_token):
+        raise HTTPException(status_code=402, detail="Invalid or missing Cashu micropayment token.")
+
+    articles = get_articles(relevant_only=True, search_query=criteria, limit=limit)
+    results = [
+        {
+            "title": a["title"],
+            "url": a["url"],
+            "score": a["score"],
+            "summary": a["summary"],
+            "key_points": a["key_points"],
+        }
+        for a in articles
+    ]
+
+    if cashu_token:
+        record_micropayment(sender="external-agent", amount_sats=1, token=cashu_token, query=criteria or "")
+
+    return {"status": "success", "count": len(results), "results": results}
+
+
+@app.post("/api/v1/a2a/pay")
+async def a2a_pay(request: Request):
+    """Record a micropayment from an external agent."""
+    body = await request.json()
+    sender = body.get("sender", "unknown")
+    amount_sats = body.get("amount_sats", 1)
+    token = body.get("cashu_token", "")
+    query = body.get("query", "")
+
+    if not verify_cashu_token(token):
+        raise HTTPException(status_code=402, detail="Invalid Cashu token.")
+
+    receipt = record_micropayment(sender=sender, amount_sats=amount_sats, token=token, query=query)
+    return {"status": "success", "receipt": receipt}
+
+
+@app.get("/api/v1/a2a/payments")
+async def a2a_payments(sender: Optional[str] = Query(None)):
+    """List micropayment history."""
+    history = get_micropayment_history(sender=sender)
+    return {"status": "success", "payments": history}
+
+
+@app.post("/api/v1/a2a/scan")
+async def a2a_trigger_scan(request: Request):
+    """Trigger a scan via A2A protocol (for remote agents)."""
+    body = await request.json()
+    source_type = body.get("source_type", "rss")
+
+    job_id = str(uuid.uuid4())
+    _scan_jobs[job_id] = {
+        "status": "pending",
+        "processed": 0,
+        "total": 0,
+        "source_type": source_type,
+    }
+    asyncio.create_task(_run_scanning_background(job_id, source_type))
+
+    return {"status": "success", "job_id": job_id, "status_url": f"/check-scan-status/{job_id}"}
+
+
+@app.get("/api/v1/a2a/mesh/publish")
+async def a2a_publish_to_mesh():
+    """Publish recent relevant articles to the Nostr mesh network."""
+    if _mesh_agent is None:
+        raise HTTPException(status_code=503, detail="Nostr mesh agent not available.")
+    try:
+        await _mesh_agent.publish_articles_to_mesh(relevant_only=True, limit=5)
+        return {"status": "success", "message": "Articles published to Nostr mesh."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
