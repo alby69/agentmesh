@@ -16,6 +16,7 @@ try:
         UnsignedEvent,
         HandleNotification,
         NostrSigner,
+        RelayUrl,
     )
 except ImportError:
     Client = None
@@ -28,6 +29,7 @@ except ImportError:
     UnsignedEvent = None
     HandleNotification = object
     NostrSigner = None
+    RelayUrl = None
 
 # Custom Kind for Agent Registry (inspired by NIP-31 but focused on AgentMesh)
 KIND_AGENT_REGISTRY = 30311
@@ -54,6 +56,7 @@ class NostrAgent(BaseAgent):
         self._rate_limits: Dict[str, List[float]] = {}
         self._rate_limit_window = 60.0  # seconds
         self._rate_limit_max_msgs = 10  # max messages per window
+        self._listening_task: Optional[asyncio.Task] = None
 
         if Client is None:
             self.logger.error("nostr-sdk not installed. NostrAgent will be dysfunctional.")
@@ -68,13 +71,14 @@ class NostrAgent(BaseAgent):
         signer = NostrSigner.keys(self.keys)
         self.client = Client(signer)
         self.relays = relays or ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.snort.social"]
-        self._listening_task: Optional[asyncio.Task] = None
 
     async def start(self):
         if not self.client:
             return
 
         for relay in self.relays:
+            if RelayUrl is not None and isinstance(relay, str):
+                relay = RelayUrl.parse(relay)
             await self.client.add_relay(relay)
 
         await self.client.connect()
