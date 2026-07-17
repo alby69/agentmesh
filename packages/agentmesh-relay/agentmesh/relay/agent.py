@@ -98,7 +98,7 @@ class NostrAgent(BaseAgent):
         pubkey = self.keys.public_key().to_hex()
         # Filter for Agent Messages (Kind 29001) addressed to this agent (p-tag)
         # Also listen for broadcast messages (no p-tag, handled by client logic)
-        msg_filter = Filter().kind(KIND_AGENT_MESSAGE).pubkey(pubkey)
+        msg_filter = Filter().kind(Kind(KIND_AGENT_MESSAGE)).pubkey(pubkey)
         await self.client.subscribe([msg_filter])
 
         self.logger.info(f"Subscribed to AgentMessages for {pubkey}")
@@ -125,7 +125,7 @@ class NostrAgent(BaseAgent):
 
     async def _process_incoming_event(self, event: Event):
         """Processes a received Nostr event and converts it to an AgentMessage."""
-        if event.kind() == KIND_AGENT_MESSAGE:
+        if event.kind() == Kind(KIND_AGENT_MESSAGE):
             # Check if event has author (handle mocks)
             try:
                 author = event.author()
@@ -148,7 +148,7 @@ class NostrAgent(BaseAgent):
         if not self.client:
             return
 
-        event = EventBuilder(kind, content, tags or []).to_event(self.keys)
+        event = EventBuilder(Kind(kind), content, tags or []).to_event(self.keys)
         event_id = await self.client.send_event(event)
         return event_id
 
@@ -179,7 +179,7 @@ class NostrAgent(BaseAgent):
         if not self.client:
             return []
 
-        filter = Filter().kind(KIND_AGENT_REGISTRY).hashtag(skill)
+        filter = Filter().kind(Kind(KIND_AGENT_REGISTRY)).hashtag(skill)
         events = await self.client.get_events_of([filter], asyncio.timedelta(seconds=5))
 
         results = []
