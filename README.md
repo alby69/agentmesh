@@ -29,7 +29,10 @@ The repository is organized as a monorepo managed with `uv`.
 - **[`agentmesh-studio`](packages/agentmesh-studio)**: CLI tools for mesh monitoring and management.
 
 ### Applications (`apps/`)
-- **[`podcast-generator`](apps/podcast-generator)**: Complete pipeline transforming newsletters into podcasts.
+- **[`podcast-generator`](apps/podcast-generator)**: Complete pipeline transforming newsletters into AI-generated podcasts (TTS, multi-LLM, Nostr + IPFS).
+- **[`newsletter-filter`](apps/newsletter-filter)**: Cognitive newsletter filtering — extracts and scores relevant articles from RSS feeds and IMAP email, with a FastAPI + HTMX web UI.
+- **[`econnet`](apps/econnet)**: Agent-Based Model (ABM) economic simulator with reinforcement learning consumers, PyTorch demand forecasting producers, and emergent market dynamics.
+- **[`motedico`](apps/motedico)**: Decentralized project collaboration and advisory mesh.
 
 ---
 
@@ -42,15 +45,20 @@ The repository is organized as a monorepo managed with `uv`.
 
 ---
 
-## 🎙️ Use Case: Podcast Generator
+## 🚀 Quick Start
 
 ```bash
-# Install dependencies
+# Install all dependencies
 uv sync
-playwright install firefox
 
-# Start generation via CLI
+# Podcast Generator
 python apps/podcast-generator/main.py daily
+
+# Newsletter Filter (web UI)
+PYTHONPATH=apps/newsletter-filter uv run python apps/newsletter-filter/main.py
+
+# EconNet (economic simulator)
+PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 200 --visualize
 ```
 
 ---

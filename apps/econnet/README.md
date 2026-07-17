@@ -19,15 +19,22 @@ EconNet supera queste limitazioni usando un approccio **bottom-up**: popola il m
 ## Quick Start
 
 ```bash
-# Installa
-uv sync --package econnet
-
 # Esegui una simulazione base
-uv run python -m econnet --ticks 500 --consumers 100 --producers 10
+PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 200
 
-# Con visualizzazione
-uv run python -m econnet --ticks 500 --visualize
+# Con grafici (prezzi, emozioni, budget, crash)
+PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 500 --visualize
+
+# Più agenti, rete scale-free
+PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 300 --consumers 200 --producers 20 --network scale-free --visualize
 ```
+
+### Output
+
+- **Console**: riepilogo alla fine (prezzo, volatilità, transazioni, densità rete)
+- **`--visualize`**: genera 4 grafici PNG nella cartella di output (`econnet_sim_price.png`, `_emotions.png`, `_budgets.png`, `_crashes.png`)
+- **`--output log.json`**: salva il log di ogni tick in JSON per analisi successiva
+- **`--output-dir path/`**: cartella dove salvare i file (default: `apps/econnet/output/`)
 
 ## Struttura
 

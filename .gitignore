@@ -13,3 +13,4 @@ web_output.log
 *.egg-info/
 dist/
 build/
+apps/econnet/output/
