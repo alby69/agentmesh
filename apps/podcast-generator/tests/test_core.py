@@ -32,10 +32,12 @@ async def test_podcast_generator_init():
 async def test_translate_newsletter(mock_config):
     from podcast_generator.translator import translate_newsletter
 
+    mock_provider = AsyncMock()
+    mock_provider.generate.return_value = "Ciao a tutti e benvenuti..."
     with patch(
-        "podcast_generator.translator.GeminiProvider.generate",
-        new_callable=AsyncMock,
-        return_value="Ciao a tutti e benvenuti...",
-    ):
+        "podcast_generator.translator.get_llm_provider",
+        return_value=mock_provider,
+    ) as mock_get:
         result = await translate_newsletter(mock_config, "Test content")
         assert "Ciao a tutti" in result
+        mock_get.assert_called_once_with(mock_config)

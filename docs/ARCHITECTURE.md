@@ -63,9 +63,43 @@ Helper libraries and shared infrastructure components.
 - **AgentMesh LLM**: Unified provider interface for Gemini, OpenAI, Anthropic, and Ollama.
 - **Mesh Config**: Specialized, decoupled configuration management for apps and agents.
 
+## 7. Application Structure
+Every app in the monorepo follows a standardized template (`scripts/new-app.sh`):
+
+```
+apps/{app-name}/
+├── pyproject.toml           # Dependencies, build config, workspace sources
+├── main.py                  # argparse CLI entry point (--server, --port, --host)
+├── README.md
+├── .env.example             # Environment variable template
+├── .gitignore               # data/, *.db, output/, .env
+├── {app_name}/
+│   ├── __init__.py          # __version__
+│   ├── config.py            # Pydantic BaseSettings with env_prefix
+│   ├── agents/              # Agent implementations (BaseAgent subclasses)
+│   ├── web/
+│   │   ├── app.py           # FastAPI with lifespan manager
+│   │   ├── db.py            # SQLite with WAL mode, data/ directory
+│   │   └── templates/       # Jinja2 + Tailwind CSS + HTMX
+│   └── data/                # Runtime database (gitignored)
+└── tests/
+    ├── conftest.py          # Shared fixtures (temp DB per test)
+    └── test_*.py
+```
+
+**Conventions:**
+- **CLI**: `argparse` (stdlib), no external CLI framework
+- **Config**: `pydantic-settings` `BaseSettings` with `env_file=".env"` and `extra="ignore"`
+- **Web**: FastAPI + Jinja2Templates + Tailwind CDN + HTMX
+- **Database**: Raw `sqlite3` with WAL mode, `data/` directory, env-overridable path
+- **Tests**: `pytest` + `unittest.mock`, `TestClient` for web, temp DB in `tmp_path`
+- **Nostr integration**: Via `agentmesh-relay` (`NostrAgent` base class)
+- **LLM integration**: Via `agentmesh-llm` (`LLMProviderFactory`)
+
 ---
 
 ## Technical Directives
 1. **Async First**: All I/O and inter-agent communication must be asynchronous.
 2. **Modular Identity**: Agents must be able to swap identities (keys) and remain functional.
 3. **P2P Fallback**: Systems must remain partially functional even if specific relays go down.
+4. **Standardized Structure**: All apps use the same template, CLI pattern, and config approach.

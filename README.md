@@ -2,81 +2,150 @@
 
 > **A decentralized coordination mesh for autonomous AI agents.**
 
-AgentMesh is an open-source framework and ecosystem designed to build, deploy, and orchestrate AI agents in a truly decentralized environment. By combining **Nostr** for coordination, **IPFS** for storage, and a **Multi-Agent** architecture, AgentMesh enables a "serverless" future for AI applications.
+AgentMesh is an open-source monorepo for building AI agent applications with a shared infrastructure of **Nostr** coordination, **IPFS** storage, and **LLM** abstraction.
 
 ---
 
-## 🌟 The Vision
+## Vision
 
-AgentMesh is not just software; it is an infrastructure for digital sovereignty.
+AgentMesh is infrastructure for digital sovereignty:
 
 - **No Central Servers**: No single point of failure. The system lives on users' nodes.
 - **Sovereign Identity**: Every agent and user owns their cryptographic keys (Nostr).
-- **Distributed Memory**: Data is stored on IPFS, making it permanent and content-addressable.
-- **Agent-to-Agent (A2A) Collaboration**: Agents cooperate via open protocols, not proprietary APIs.
+- **Distributed Memory**: Content-addressable storage on IPFS.
+- **Agent-to-Agent (A2A) Collaboration**: Open protocols, not proprietary APIs.
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
-The repository is organized as a monorepo managed with `uv`.
+The repository is a monorepo managed with [uv](https://docs.astral.sh/uv/):
 
-### Core Packages (`packages/`)
-- **[`agentmesh-core`](packages/agentmesh-core)**: Foundational interfaces, models, and structured logging.
-- **[`agentmesh-llm`](packages/agentmesh-llm)**: Unified provider interface for LLMs (Gemini, OpenAI, Anthropic, Ollama).
-- **[`agentmesh-relay`](packages/agentmesh-relay)**: P2P communication layer based on the **Nostr** protocol.
-- **[`agentmesh-vault`](packages/agentmesh-vault)**: Distributed storage layer based on **IPFS**.
-- **[`agentmesh-studio`](packages/agentmesh-studio)**: CLI tools for mesh monitoring and management.
-
-### Applications (`apps/`)
-- **[`podcast-generator`](apps/podcast-generator)**: Complete pipeline transforming newsletters into AI-generated podcasts (TTS, multi-LLM, Nostr + IPFS).
-- **[`newsletter-filter`](apps/newsletter-filter)**: Cognitive newsletter filtering — extracts and scores relevant articles from RSS feeds and IMAP email, with a FastAPI + HTMX web UI.
-- **[`econnet`](apps/econnet)**: Agent-Based Model (ABM) economic simulator with reinforcement learning consumers, PyTorch demand forecasting producers, and emergent market dynamics.
-- **[`motedico`](apps/motedico)**: Decentralized project collaboration and advisory mesh.
-
----
-
-## 🚀 Key Features
-
-- **Decentralized CI/CD**: Automatic linting and testing via GitHub Actions.
-- **Structured Logging**: Unified JSON logging for better observability in distributed nodes.
-- **Security First**: Documented threat model and security best practices.
-- **Standardized A2A**: Formal protocol for inter-agent tasking and responses.
+```
+agentmesh/
+├── packages/                  # Shared libraries
+│   ├── agentmesh-core/        # BaseAgent, MeshConfig, models, logging
+│   ├── agentmesh-llm/         # LLM providers (Gemini, OpenAI, Anthropic, Ollama)
+│   ├── agentmesh-relay/       # Nostr P2P communication layer
+│   ├── agentmesh-vault/       # IPFS content-addressable storage
+│   └── agentmesh-studio/      # CLI tools (agentmesh info/vision)
+├── apps/                      # Applications
+│   ├── newsletter-filter/     # Cognitive newsletter filtering + web UI
+│   ├── podcast-generator/     # Newsletter → Italian podcast pipeline
+│   ├── econnet/               # ABM economic simulator
+│   └── motedico/              # Decentralized project collaboration mesh
+├── scripts/
+│   └── new-app.sh             # Scaffolding tool for new apps
+├── docs/                      # Technical documentation
+└── pyproject.toml             # Workspace root config
+```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Install all dependencies
 uv sync
 
-# Podcast Generator
-python apps/podcast-generator/main.py daily
+# Create a new app from the standard template
+bash scripts/new-app.sh my-new-app
 
-# Newsletter Filter (web UI)
-PYTHONPATH=apps/newsletter-filter uv run python apps/newsletter-filter/main.py
-
-# EconNet (economic simulator)
+# Run an app
+PYTHONPATH=apps/newsletter-filter uv run python apps/newsletter-filter/main.py --server
+PYTHONPATH=apps/podcast-generator uv run python apps/podcast-generator/main.py daily
 PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 200 --visualize
+PYTHONPATH=apps/motedico uv run python apps/motedico/main.py --server
 ```
 
 ---
 
-## 📖 Documentation
+## Creating a New App
 
-| Document | Content |
-|---|---|
-| [docs/VISION.md](docs/VISION.md) | Philosophy and digital sovereignty |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Mesh layers and technical details |
-| [docs/A2A_PROTOCOL.md](docs/A2A_PROTOCOL.md) | Communication standards |
-| [docs/SECURITY.md](docs/SECURITY.md) | Threat model and mitigations |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Future plans and v4.0 focus |
+Every app follows the standard template. To create one:
+
+```bash
+bash scripts/new-app.sh <app-name>          # with web layer (FastAPI + Jinja2)
+bash scripts/new-app.sh <sim-name> --no-web  # without web layer
+```
+
+This generates the full structure:
+
+```
+apps/{app-name}/
+├── pyproject.toml           # Dependencies and build config
+├── main.py                  # argparse CLI (--server, --port, --host)
+├── README.md
+├── .env.example
+├── .gitignore
+├── {app_name}/
+│   ├── __init__.py          # __version__
+│   ├── config.py            # Pydantic Settings (env vars)
+│   ├── agents/              # Agent implementations
+│   ├── web/
+│   │   ├── app.py           # FastAPI + lifespan manager
+│   │   ├── db.py            # SQLite (data/ dir, WAL mode)
+│   │   └── templates/       # Jinja2 + Tailwind + HTMX
+│   └── data/                # Database files (gitignored)
+└── tests/
+    ├── conftest.py          # Shared fixtures (temp DB)
+    └── test_*.py
+```
 
 ---
 
-## Contributing
+## Applications
 
-We are in an intense development phase. See [docs/README.md](docs/README.md) for the full index of technical documentation.
+| App | Description | Web | CLI |
+|-----|-------------|-----|-----|
+| **newsletter-filter** | Cognitive newsletter filtering — extracts and scores relevant articles from RSS/IMAP | FastAPI + HTMX | `--server`, `--daemon`, `--source-type` |
+| **podcast-generator** | Newsletter → Italian podcast pipeline (TTS, multi-LLM, Nostr + IPFS) | FastAPI + OAuth | `daily`, `weekly`, `fetch-all`, `server` |
+| **econnet** | ABM economic simulator with RL consumers and emergent market dynamics | — | `--ticks`, `--consumers`, `--visualize` |
+| **motedico** | Decentralized project collaboration and advisory mesh | FastAPI + HTMX | `--server` |
+
+---
+
+## Core Packages
+
+| Package | Description |
+|---------|-------------|
+| **agentmesh-core** | `BaseAgent`, `MeshConfig`, `MeshOrchestrator`, structured logging, metrics |
+| **agentmesh-llm** | Unified LLM interface with factory pattern (Gemini, OpenAI, Anthropic, Ollama) |
+| **agentmesh-relay** | Nostr protocol integration — `NostrAgent` with event publishing, listening, A2A |
+| **agentmesh-vault** | IPFS content-addressable storage — `VaultAgent` with mock and real providers |
+| **agentmesh-studio** | CLI tools (`agentmesh info`, `agentmesh vision`) |
+
+---
+
+## Development
+
+```bash
+# Run lint
+uv run ruff check apps/ packages/
+
+# Run tests for all apps
+uv run pytest apps/newsletter-filter/tests -v
+uv run pytest apps/podcast-generator/tests -v
+uv run pytest apps/econnet/tests -v
+uv run pytest apps/motedico/tests -v
+
+# Sync all workspace packages
+uv sync --all-packages
+```
+
+---
+
+## Documentation
+
+| Document | Content |
+|----------|---------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Mesh layers and technical details |
+| [docs/VISION.md](docs/VISION.md) | Philosophy and digital sovereignty |
+| [docs/A2A_PROTOCOL.md](docs/A2A_PROTOCOL.md) | Agent-to-Agent communication protocol |
+| [docs/SECURITY.md](docs/SECURITY.md) | Threat model and mitigations |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Development roadmap |
+| [docs/README.md](docs/README.md) | Full documentation index |
+
+---
 
 **AgentMesh: The mesh is the message.**

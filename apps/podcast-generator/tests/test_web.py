@@ -33,9 +33,10 @@ def test_api_no_auth_required_by_default(client: TestClient):
 
 
 def test_api_requires_token_when_configured(client: TestClient):
-    import os
-    original = os.environ.get("API_TOKEN")
-    os.environ["API_TOKEN"] = "test-token"
+    from podcast_generator.web import app as app_module
+
+    original = app_module._cfg.api_token
+    app_module._cfg.api_token = "test-token"
 
     response = client.get("/api/v1/episodes")
     assert response.status_code == 401
@@ -46,7 +47,4 @@ def test_api_requires_token_when_configured(client: TestClient):
     )
     assert response.status_code == 200
 
-    if original is None:
-        del os.environ["API_TOKEN"]
-    else:
-        os.environ["API_TOKEN"] = original
+    app_module._cfg.api_token = original

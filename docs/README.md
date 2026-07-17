@@ -1,22 +1,33 @@
 # AgentMesh Documentation Index
 
-Welcome to the AgentMesh documentation. This directory contains technical and visionary documents for the decentralized agentic mesh.
+## Getting Started
 
-## 🏁 Getting Started
-- **[VISION.md](VISION.md)**: The "Why" - Our philosophy on digital sovereignty and decentralized AI.
-- **[ARCHITECTURE.md](ARCHITECTURE.md)**: The "How" - Detailed breakdown of the mesh layers (Network, Storage, Agent).
-- **[ROADMAP.md](ROADMAP.md)**: Our journey towards v4.0 and beyond.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Mesh layers and technical architecture.
+- **[VISION.md](VISION.md)** — Philosophy and digital sovereignty.
+- **[ROADMAP.md](ROADMAP.md)** — Development roadmap and milestones.
 
-## 🛠️ Protocols & Security
-- **[A2A_PROTOCOL.md](A2A_PROTOCOL.md)**: Formal specification for Agent-to-Agent communication.
-- **[SECURITY.md](SECURITY.md)**: Threat model and security best practices for decentralized agents.
-- **[AGENTSTR_INTEGRATION.md](AGENTSTR_INTEGRATION.md)**: Details on MCP and `agentstr-sdk` integration.
+## Protocols & Security
 
-## 📦 Packages Reference
-- **[agentmesh-core](../packages/agentmesh-core/README.md)**: Foundational models and interfaces.
-- **[agentmesh-llm](../packages/agentmesh-llm/README.md)**: Unified LLM provider interface.
-- **[agentmesh-relay](../packages/agentmesh-relay/README.md)**: Nostr-based P2P communication.
-- **[agentmesh-vault](../packages/agentmesh-vault/README.md)**: IPFS-based distributed storage.
+- **[A2A_PROTOCOL.md](A2A_PROTOCOL.md)** — Formal specification for Agent-to-Agent communication.
+- **[SECURITY.md](SECURITY.md)** — Threat model and security best practices.
+- **[AGENTSTR_INTEGRATION.md](AGENTSTR_INTEGRATION.md)** — MCP and `agentstr-sdk` integration.
 
-## 🎙️ Applications
-- **[Podcast Generator](../apps/podcast-generator/README.md)**: Our flagship demonstration app.
+## Core Packages
+
+- **[agentmesh-core](../packages/agentmesh-core/README.md)** — BaseAgent, MeshConfig, models, logging.
+- **[agentmesh-llm](../packages/agentmesh-llm/README.md)** — Unified LLM provider interface.
+- **[agentmesh-relay](../packages/agentmesh-relay/README.md)** — Nostr P2P communication.
+- **[agentmesh-vault](../packages/agentmesh-vault/README.md)** — IPFS distributed storage.
+- **[agentmesh-studio](../packages/agentmesh-studio/README.md)** — CLI tools.
+
+## Applications
+
+- **[newsletter-filter](../apps/newsletter-filter/README.md)** — Cognitive newsletter filtering + web UI.
+- **[podcast-generator](../apps/podcast-generator/README.md)** — Newsletter → Italian podcast pipeline.
+- **[econnet](../apps/econnet/README.md)** — ABM economic simulator.
+- **[motedico](../apps/motedico/README.md)** — Decentralized project collaboration mesh.
+
+## Reference
+
+- **[web-app.md](web-app.md)** — Podcast Generator web app reference.
+- **[library.md](library.md)** — Podcast Generator Python library reference.

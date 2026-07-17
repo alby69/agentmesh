@@ -1,3 +1,7 @@
+"""podcast-generator — Trasforma newsletter in podcast italiano."""
+
+__version__ = "2.0.0"
+
 from podcast_generator.config import Settings
 from podcast_generator.models import Newsletter, Episode, ArticleSummary, GenerationJob
 from podcast_generator.tracker import Tracker

@@ -2,21 +2,23 @@
 name = "motedico"
 version = "0.1.0"
 description = "Decentralized project collaboration and advisory mesh"
-authors = [{ name = "AgentMesh Contributors" }]
 requires-python = ">=3.10"
 dependencies = [
     "agentmesh-core",
     "agentmesh-relay",
     "agentmesh-vault",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.9",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.1.0",
 ]
 
 [tool.uv.sources]
 agentmesh-core = { workspace = true }
 agentmesh-relay = { workspace = true }
 agentmesh-vault = { workspace = true }
-
-[tool.hatch.build.targets.wheel]
-packages = ["motedico"]
 
 [build-system]
 requires = ["hatchling"]

@@ -1,158 +1,136 @@
-#!/usr/bin/env python3
-"""CLI entrypoint for podcast-generator.
+"""CLI entry point for podcast-generator."""
 
-Usage:
-    python main.py daily
-    python main.py weekly --days 7
-    python main.py fetch-all --limit 10
-    python main.py status
-"""
+from __future__ import annotations
 
+import argparse
 import asyncio
 import sys
 from pathlib import Path
-from typing import Optional
-
-import typer
-from rich import print as rprint
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from podcast_generator.config import Settings
-from podcast_generator.pipeline import (
-    daily_episode as _daily,
-    weekly_episode as _weekly,
-    process_all as _all,
-)
-from podcast_generator.tracker import Tracker
 from podcast_generator.exceptions import ConfigError
-
-app = typer.Typer(
-    name="podcast-generator",
-    help="Genera episodi podcast da una newsletter (configurabile via .env)",
-)
 
 
 def _get_cfg() -> Settings:
     cfg = Settings()
-    try:
-        cfg.validate()
-    except ConfigError as e:
-        rprint(f"[bold red]Errore:[/] {e}")
-        raise typer.Exit(code=1) from e
+    cfg.validate()
     return cfg
 
 
-@app.command()
-def daily(
-    search: Optional[bool] = typer.Option(
-        None,
-        "--search/--no-search",
-        help="Abilita/disabilita Google Search grounding",
-    ),
-):
-    """Episodio giornaliero: ultima newsletter → traduzione → audio."""
-    cfg = _get_cfg()
-    if search is not None:
-        cfg.use_web_search = search
-    path = asyncio.run(_daily(cfg))
-    rprint(f"[green]Episodio salvato in:[/] {path}")
-
-
-@app.command()
-def weekly(
-    days: int = typer.Option(7, "--days", "-d", help="Numero giorni da aggregare"),
-    search: Optional[bool] = typer.Option(
-        None,
-        "--search/--no-search",
-        help="Abilita/disabilita Google Search grounding",
-    ),
-):
-    """Episodio settimanale: aggrega N newsletter → traduzione → audio."""
-    cfg = _get_cfg()
-    if search is not None:
-        cfg.use_web_search = search
-    path = asyncio.run(_weekly(cfg, days))
-    rprint(f"[green]Episodio salvato in:[/] {path}")
-
-
-@app.command()
-def fetch_all(
-    limit: Optional[int] = typer.Option(
-        None,
-        "--limit",
-        "-l",
-        help="Limite massimo newsletter da processare",
-    ),
-    search: Optional[bool] = typer.Option(
-        None,
-        "--search/--no-search",
-        help="Abilita/disabilita Google Search grounding",
-    ),
-):
-    """Scarica TUTTE le newsletter non ancora processate."""
-    cfg = _get_cfg()
-    if search is not None:
-        cfg.use_web_search = search
-    result = asyncio.run(_all(cfg, limit=limit))
-    rprint(
-        f"[green]Fatto:[/] {len(result['daily'])} giornaliere, "
-        f"{len(result['weekly'])} settimanali"
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="podcast-generator",
+        description="Genera episodi podcast da newsletter (configurabile via .env)",
     )
+    sub = parser.add_subparsers(dest="command")
+
+    # daily
+    p_daily = sub.add_parser("daily", help="Episodio giornaliero: ultima newsletter → traduzione → audio")
+    p_daily.add_argument("--search/--no-search", dest="use_web_search", default=None,
+                         help="Abilita/disabilita Google Search grounding")
+
+    # weekly
+    p_weekly = sub.add_parser("weekly", help="Episodio settimanale: aggrega N newsletter → traduzione → audio")
+    p_weekly.add_argument("--days", "-d", type=int, default=7, help="Numero giorni da aggregare")
+    p_weekly.add_argument("--search/--no-search", dest="use_web_search", default=None,
+                          help="Abilita/disabilita Google Search grounding")
+
+    # fetch-all
+    p_fetch = sub.add_parser("fetch-all", help="Scarica tutte le newsletter non ancora processate")
+    p_fetch.add_argument("--limit", "-l", type=int, default=None,
+                         help="Limite massimo newsletter da processare")
+    p_fetch.add_argument("--search/--no-search", dest="use_web_search", default=None,
+                         help="Abilita/disabilita Google Search grounding")
+
+    # status
+    sub.add_parser("status", help="Mostra lo stato del tracker")
+
+    # v3-generate
+    sub.add_parser("v3-generate", help="V3 PoC: Fetch → ContentAgent → IPFS → Nostr")
+
+    # server
+    p_server = sub.add_parser("server", help="Avvia la Web UI server")
+    p_server.add_argument("--port", type=int, default=8000, help="Porta (default: 8000)")
+    p_server.add_argument("--host", type=str, default="0.0.0.0", help="Host (default: 0.0.0.0)")
+
+    return parser
 
 
-@app.command()
-def status():
-    """Mostra lo stato del tracker: puntate processate e settimane coperte."""
+def cmd_daily(args):
+    from podcast_generator.pipeline import daily_episode
+    cfg = _get_cfg()
+    if args.use_web_search is not None:
+        cfg.use_web_search = args.use_web_search
+    path = asyncio.run(daily_episode(cfg))
+    print(f"Episodio salvato in: {path}")
+
+
+def cmd_weekly(args):
+    from podcast_generator.pipeline import weekly_episode
+    cfg = _get_cfg()
+    if args.use_web_search is not None:
+        cfg.use_web_search = args.use_web_search
+    path = asyncio.run(weekly_episode(cfg, args.days))
+    print(f"Episodio salvato in: {path}")
+
+
+def cmd_fetch_all(args):
+    from podcast_generator.pipeline import process_all
+    cfg = _get_cfg()
+    if args.use_web_search is not None:
+        cfg.use_web_search = args.use_web_search
+    result = asyncio.run(process_all(cfg, limit=args.limit))
+    print(f"Fatto: {len(result['daily'])} giornaliere, {len(result['weekly'])} settimanali")
+
+
+def cmd_status(args):
+    from podcast_generator.tracker import Tracker
     cfg = _get_cfg()
     tracker = Tracker(cfg.output_dir)
     total = len(tracker.data["processed"])
     by_week = tracker.get_by_week()
-    rprint(f"\n[bold]Tracker:[/] {cfg.output_dir / '.processed.json'}")
-    rprint(f"[bold]Puntate processate:[/] {total}")
-    rprint(f"[bold]Settimane coperte:[/] {len(by_week)}")
+    print(f"\nTracker: {cfg.output_dir / '.processed.json'}")
+    print(f"Puntate processate: {total}")
+    print(f"Settimane coperte: {len(by_week)}")
     for wk in sorted(by_week):
-        rprint(f"  [cyan]{wk}[/]: {len(by_week[wk])} puntate")
+        print(f"  {wk}: {len(by_week[wk])} puntate")
 
 
-@app.command()
-def v3_generate():
-    """V3 PoC: Fetch -> ContentAgent -> StorageAgent (IPFS) -> NetworkAgent (Nostr)."""
+def cmd_v3_generate(args):
     from podcast_generator.agents.content_agent import ContentAgent
     from podcast_generator.agents.storage_agent import StorageAgent
     from podcast_generator.agents.network_agent import NetworkAgent
 
     async def run_v3():
         cfg = _get_cfg()
-
         content_agent = ContentAgent(cfg)
         storage_agent = StorageAgent(cfg)
         network_agent = NetworkAgent(cfg)
 
-        # Start agents
         await content_agent.start()
         await storage_agent.start()
         await network_agent.start()
 
         try:
-            rprint("[yellow]V3 Flow: Fetching latest newsletter...[/]")
+            print("V3 Flow: Fetching latest newsletter...")
             nl = await content_agent.fetch_latest()
 
-            rprint(f"[yellow]V3 Flow: Generating episode for '{nl.title}'...[/]")
+            print(f"V3 Flow: Generating episode for '{nl.title}'...")
             episode = await content_agent.generate_episode_from_newsletter(nl)
 
-            rprint("[yellow]V3 Flow: Uploading to IPFS...[/]")
+            print("V3 Flow: Uploading to IPFS...")
             cid = await storage_agent.upload_file(episode.audio_path)
 
             if cid:
-                rprint(f"[green]V3 Flow: IPFS CID: {cid}[/]")
-                rprint("[yellow]V3 Flow: Publishing to Nostr...[/]")
+                print(f"V3 Flow: IPFS CID: {cid}")
+                print("V3 Flow: Publishing to Nostr...")
                 event_id = await network_agent.publish_podcast(episode.title, cid, {})
                 if event_id:
-                    rprint("[bold green]V3 Flow COMPLETE![/]")
-                    rprint(f"Nostr Event ID: {event_id.to_bech32()}")
-                    rprint(f"IPFS Gateway: {await storage_agent.get_file_url(cid)}")
-
+                    print("V3 Flow COMPLETE!")
+                    print(f"Nostr Event ID: {event_id.to_bech32()}")
+                    print(f"IPFS Gateway: {await storage_agent.get_file_url(cid)}")
         finally:
             await content_agent.stop()
             await storage_agent.stop()
@@ -161,5 +139,37 @@ def v3_generate():
     asyncio.run(run_v3())
 
 
+def cmd_server(args):
+    import uvicorn
+    from podcast_generator.web.app import app
+
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+
+
+COMMANDS = {
+    "daily": cmd_daily,
+    "weekly": cmd_weekly,
+    "fetch-all": cmd_fetch_all,
+    "status": cmd_status,
+    "v3-generate": cmd_v3_generate,
+    "server": cmd_server,
+}
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    if args.command is None:
+        parser.print_help()
+        return
+
+    try:
+        COMMANDS[args.command](args)
+    except ConfigError as e:
+        print(f"Errore: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    app()
+    main()

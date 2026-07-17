@@ -2,15 +2,14 @@
 
 ## v2.0 — Complete Restructuring (Completed)
 
-### Objective
-Transform the project into an **installable Python library** with a clean API, multi-LLM support, FastAPI web app, and documentation.
+Transformed the project into an installable Python library with clean API, multi-LLM support, FastAPI web app, and documentation.
 - **Runtime status**: Stable local runtime with async-first architecture.
 
 ---
 
-## v3.0 — The Decentralized Era (Completed) 🚀
+## v3.0 — The Decentralized Era (Completed)
 
-Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
+Transitioned from monolithic architecture to a P2P Multi-Agent mesh.
 
 ### Milestone 1: Core Agent Framework
 - [x] **BaseAgent Framework**: Foundational infrastructure for decoupled asynchronous agents.
@@ -19,72 +18,85 @@ Transitioning from a monolithic architecture to a **P2P Multi-Agent** mesh.
 - [x] **Content Agent**: Core generation logic refactored as an agent.
 
 ### Milestone 2: Core Mesh Protocols
-- [x] **v3.0.1 — Agent Registry**: Decentralized discovery mechanism via Nostr. Agents publish an `AgentCapability` event to allow discovery of specialized skills (TTS, Translation, etc.).
-- [x] **v3.0.2 — Standardized AgentMessage**: Unified communication protocol with common schema (id, sender, receiver, type, payload, timestamp).
-- [x] **v3.0.3 — Task Agent**: High-level orchestrator that receives requests and delegates to specialized agents (Content, Storage, Network).
+- [x] **v3.0.1 — Agent Registry**: Decentralized discovery via Nostr `AgentCapability` events.
+- [x] **v3.0.2 — AgentMessage**: Unified inter-agent communication protocol.
+- [x] **v3.0.3 — Task Agent**: High-level orchestrator delegating to specialized agents.
 
 ---
 
-## v3.1 — Scaling & Advanced Coordination (Completed) 🚀
+## v3.1 — Scaling & Advanced Coordination (Completed)
 
 ### Strategic Agents
-- [x] **Workflow Agent**: Manages complex task sequences (fetch → summarize → translate → script → audio → publish). Resolves dependencies using the Registry.
-- [x] **Project Agent**: Represents an autonomous project. Maintains state, coordinates members (human/agent), and manages project memory on IPFS.
+- [x] **Workflow Agent**: Complex task sequence management.
+- [x] **Project Agent**: Autonomous project lifecycle coordination.
 
-### Product Features (UX & Quality)
+### Product Features
 - [x] **Multi-speaker**: Dialogue between host and guest.
-- [x] **NotebookLM style**: Deep "discussion" generation between two host voices.
-- [ ] **Long-form Support**: Handling episodes >60 min with automatic part splitting.
+- [x] **NotebookLM style**: Deep discussion generation.
+- [ ] **Long-form Support**: Episodes >60 min with automatic splitting.
 
-### Infrastructure Features (Performance & Scaling)
-- [x] **TTS Caching**: Content-addressed audio storage to avoid redundant synthesis (Hash-based lookup).
-- [x] **Reactive Message Bus**: Agents actively listen for Nostr events tagged with their pubkey to trigger tasks.
-- [x] **Integrated Scheduling**: Internal agenda (APScheduler) for automated tasks.
-
----
-
-## v3.5 — Knowledge Mesh & Economy (Completed) 💸
-
-### Milestone 1: Knowledge & Reputation
-- [x] **Knowledge Agent**: Evolution of the Social Agent. Manages distributed memory, shared knowledge graphs, and reputation via Nostr events.
-- [x] **Reputation System**: Web-of-Trust based scores for mesh agents.
-
-### Milestone 2: Agentic Economy
-- [x] **agentstr-sdk Integration**: Professional A2A coordination and MCP compatibility.
-- [x] **Micropayments Layer**: Lightning Network and Cashu integration for pay-per-task execution.
+### Infrastructure
+- [x] **TTS Caching**: Content-addressed audio storage.
+- [x] **Reactive Message Bus**: Nostr event-driven task triggering.
+- [x] **Integrated Scheduling**: APScheduler for automated tasks.
 
 ---
 
-## v4.0 — Decentralized Native Platform 🏛️
+## v3.5 — Knowledge Mesh & Economy (Completed)
 
-Evolution from a "Podcast Tool" to a generic distributed agentic infrastructure.
+### Knowledge & Reputation
+- [x] **Knowledge Agent**: Distributed memory and shared knowledge graphs.
+- [x] **Reputation System**: Web-of-Trust based scores.
+
+### Agentic Economy
+- [x] **agentstr-sdk Integration**: A2A coordination and MCP compatibility.
+- [x] **Micropayments Layer**: Lightning Network and Cashu integration.
+
+---
+
+## v3.6 — Monorepo Standardization (Completed)
+
+### Standardized App Template
+- [x] **Scaffolding tool**: `scripts/new-app.sh` generates new apps from a standard template.
+- [x] **Unified CLI**: All apps use `argparse` (stdlib) with `--server/--port/--host`.
+- [x] **Unified Config**: Pydantic `BaseSettings` with `env_file=".env"`.
+- [x] **Unified Web Stack**: FastAPI + Jinja2 + Tailwind + HTMX.
+- [x] **Unified DB Layer**: Raw `sqlite3` with WAL mode, `data/` directory.
+- [x] **Unified Tests**: pytest + conftest.py + TestClient + temp DB fixtures.
+
+### App Refactoring
+- [x] **newsletter-filter**: `__version__`, `.gitignore`, standardized DB path.
+- [x] **podcast-generator**: Config flattened (7 mixins → 1), Typer → argparse, removed typer/rich deps.
+- [x] **econnet**: `__version__`, `.gitignore`, `.env.example`, `conftest.py`.
+- [x] **motedico**: Full scaffold from skeleton (main.py, config, web, db, tests, templates).
+
+### Bug Fixes
+- [x] **nostr-sdk API**: `Client(NostrSigner.keys(keys))` update, removed non-existent `Nip44`.
+- [x] **podcast-generator tests**: Fixed mock paths, missing `ipfs_provider` config, env var timing.
+- [x] **newsletter-filter DB**: Moved to `data/` directory, test DB in temp dir.
+
+---
+
+## v4.0 — Decentralized Native Platform
 
 ### Milestone 1: Advanced Identity & Discovery
-- [ ] **Identity Agent**: Sovereign identity management based on Nostr keys (NIP-05, NIP-32). Standardized key rotation and recovery.
-- [ ] **Federated Search Agent**: Distributed discovery across Nostr, IPFS, and local caches using the "Routstr" pattern.
-- [ ] **Capability Crawler**: Background agent that indexes the mesh and updates local knowledge graphs.
+- [ ] **Identity Agent**: Sovereign identity management (NIP-05, NIP-32), key rotation and recovery.
+- [ ] **Federated Search Agent**: Distributed discovery across Nostr, IPFS, and local caches.
+- [ ] **Capability Crawler**: Background agent indexing the mesh.
 
 ### Milestone 2: Agentic Marketplace
-- [ ] **Marketplace Agent**: Automated matching and bidding (Service Announcements) for agent services using Nostr-native auctions.
-- [ ] **Reputation Oracle**: Aggregates Web-of-Trust signals and task completion history to rank mesh participants.
-- [ ] **Service Level Agreements (SLAs)**: Smart-contract-like templates for task guarantees via DLCs or multisig.
+- [ ] **Marketplace Agent**: Automated matching and bidding for agent services.
+- [ ] **Reputation Oracle**: Web-of-Trust signal aggregation.
+- [ ] **Service Level Agreements (SLAs)**: Smart-contract-like task guarantees.
 
 ### Milestone 3: Infrastructure & UX
-- [ ] **MCP Native Hub**: Full Model Context Protocol integration. Every agent becomes an MCP server and client.
-- [ ] **Mesh Dashboard**: Real-time visualization of the P2P network, task flows, and agent economy.
-- [ ] **Mobile Node**: Lightweight implementation for running agents on mobile devices (Android/iOS).
-
----
-
-## Implementation Plan: v4.0 (Immediate Focus)
-
-1. **Identity Refactor**: Integrate `agentstr-sdk` to handle sovereign identity and NIP-05 verification.
-2. **Discovery Protocols**: Implement the "Routstr" discovery mechanism to replace simple relay-based lookup.
-3. **A2A Bidding**: Deploy the first prototype of the Marketplace Agent with support for automated bidding.
+- [ ] **MCP Native Hub**: Full Model Context Protocol integration.
+- [ ] **Mesh Dashboard**: Real-time P2P network visualization.
+- [ ] **Mobile Node**: Lightweight agent runtime for mobile devices.
 
 ---
 
 ## Contributing
 
-We welcome contributions to any part of the roadmap. Please open an issue to discuss your implementation plan before starting work.
-Every new feature should follow the async-first pattern and include comprehensive tests.
+We welcome contributions. Please open an issue to discuss your plan before starting.
+Every feature should follow the async-first pattern and include tests.

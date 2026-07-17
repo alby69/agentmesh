@@ -44,6 +44,8 @@ apps/newsletter-filter/
 ├── pyproject.toml                       # Dipendenze e configurazione build
 ├── .env.example                         # Template configurazione
 ├── ROADMAP.md                           # Piano di sviluppo in fasi
+├── data/                                # Database e file generati (gitignored)
+│   └── newsletter_filter.db             # SQLite database
 ├── newsletter_filter/
 │   ├── config.py                        # Pydantic Settings (env vars)
 │   ├── engine.py                        # Orchestratore pipeline async

@@ -14,3 +14,4 @@ web_output.log
 dist/
 build/
 apps/econnet/output/
+apps/newsletter-filter/data/

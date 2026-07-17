@@ -4,9 +4,12 @@ import sqlite3
 import os
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-DB_PATH = os.getenv("FILTER_DB_PATH", "newsletter_filter.db")
+_APP_DIR = Path(__file__).resolve().parent.parent.parent
+_default_db = str(_APP_DIR / "data" / "newsletter_filter.db")
+DB_PATH = os.getenv("FILTER_DB_PATH", _default_db)
 
 
 def get_connection() -> sqlite3.Connection:
@@ -18,6 +21,7 @@ def get_connection() -> sqlite3.Connection:
 
 
 def init_db():
+    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS settings (

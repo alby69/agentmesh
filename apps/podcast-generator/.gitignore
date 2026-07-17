@@ -1,0 +1,7 @@
+data/
+output/
+*.db
+*.db-shm
+*.db-wal
+.env
+.processed.json

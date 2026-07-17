@@ -1,0 +1,1 @@
+"""MoTeDico web package."""

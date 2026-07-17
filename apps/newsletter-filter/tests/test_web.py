@@ -1,9 +1,11 @@
 import os
+import tempfile
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
 # Set mock db path environment variable before any imports
-MOCK_DB_PATH = "test_newsletter_filter.db"
+_temp_dir = tempfile.mkdtemp()
+MOCK_DB_PATH = os.path.join(_temp_dir, "test_newsletter_filter.db")
 os.environ["FILTER_DB_PATH"] = MOCK_DB_PATH
 
 from fastapi.testclient import TestClient
