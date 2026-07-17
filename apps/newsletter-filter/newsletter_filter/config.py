@@ -16,6 +16,8 @@ class FilterSettings(BaseSettings):
 
     # RSS settings
     rss_urls: List[str] = Field(default_factory=list, env="FILTER_RSS_URLS")
+    substack_limit: int = Field(default=0, env="FILTER_SUBSTACK_LIMIT")
+    substack_offset: int = Field(default=0, env="FILTER_SUBSTACK_OFFSET")
 
     # Filtering default settings
     default_query: str = Field(

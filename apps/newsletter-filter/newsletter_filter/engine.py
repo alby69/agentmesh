@@ -53,6 +53,8 @@ async def process_filtering(
     imap_config: Optional[Dict[str, Any]] = None,
     limit: int = 10,
     max_concurrent: int = DEFAULT_MAX_CONCURRENT,
+    substack_limit: int = 0,
+    substack_offset: int = 0,
 ) -> List[Dict[str, Any]]:
     logger.info(
         "Starting pipeline. Source: %s (%s), Query: '%s'",
@@ -61,7 +63,11 @@ async def process_filtering(
 
     articles: List[ArticleItem] = []
     if source_type.lower() == "rss":
-        articles = await fetch_rss(source_url_or_folder)
+        articles = await fetch_rss(
+            source_url_or_folder,
+            substack_limit=substack_limit,
+            substack_offset=substack_offset,
+        )
     elif source_type.lower() == "imap":
         if not imap_config:
             logger.error("IMAP source requested but no imap_config was provided.")

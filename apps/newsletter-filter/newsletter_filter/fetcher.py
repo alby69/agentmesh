@@ -3,6 +3,7 @@ import trafilatura
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from urllib.parse import urlparse
 
 logger = logging.getLogger("newsletter_filter.fetcher")
 
@@ -21,10 +22,22 @@ class ArticleItem:
             "date": self.date
         }
 
-async def fetch_rss(url: str) -> List[ArticleItem]:
+def _is_substack_url(url: str) -> bool:
+    parsed = urlparse(url)
+    return parsed.hostname == "substack.com" or (
+        parsed.hostname and parsed.hostname.endswith(".substack.com")
+    )
+
+
+async def fetch_rss(url: str, substack_limit: int = 0, substack_offset: int = 0) -> List[ArticleItem]:
     """
     Fetches articles from an RSS feed and extracts their body content.
+    For Substack publications, uses the archive API to get all posts.
     """
+    if _is_substack_url(url):
+        from newsletter_filter.fetcher_substack import fetch_substack
+        return await fetch_substack(url, limit=substack_limit, offset=substack_offset)
+
     logger.info(f"Fetching RSS feed from: {url}")
     try:
         feed = feedparser.parse(url)

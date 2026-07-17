@@ -85,7 +85,11 @@ async def _run_scanning_background(job_id: str, source_type: str):
                 urls = ["https://stefanogatti.substack.com/feed"]
 
             for u in urls:
-                fetched = await fetch_rss(u)
+                fetched = await fetch_rss(
+                    u,
+                    substack_limit=settings.substack_limit,
+                    substack_offset=settings.substack_offset,
+                )
                 articles_to_process.extend(fetched)
         elif source_type == "imap":
             if not settings.imap_host or not settings.imap_user:
