@@ -14,8 +14,8 @@ try:
         Filter,
         Kind,
         UnsignedEvent,
-        Nip44,
         HandleNotification,
+        NostrSigner,
     )
 except ImportError:
     Client = None
@@ -26,8 +26,8 @@ except ImportError:
     Filter = None
     Kind = None
     UnsignedEvent = None
-    Nip44 = None
     HandleNotification = object
+    NostrSigner = None
 
 # Custom Kind for Agent Registry (inspired by NIP-31 but focused on AgentMesh)
 KIND_AGENT_REGISTRY = 30311
@@ -65,7 +65,8 @@ class NostrAgent(BaseAgent):
         else:
             self.keys = Keys.generate()
 
-        self.client = Client(self.keys)
+        signer = NostrSigner.keys(self.keys)
+        self.client = Client(signer)
         self.relays = relays or ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.snort.social"]
         self._listening_task: Optional[asyncio.Task] = None
 
