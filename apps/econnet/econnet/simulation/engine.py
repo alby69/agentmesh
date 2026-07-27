@@ -26,6 +26,20 @@ class SimulationEngine:
         self.tick_log: List[Dict[str, Any]] = []
         self._running = False
 
+        # Graeberian properties
+        self.graeber_active = self.config.get("graeber", False)
+        self.social_peace = self.config.get("initial_peace", 1.0)
+        self.tribute_rate = self.config.get("tribute_rate", 0.05)
+
+        # Graeberian cumulative statistics
+        self.total_mutual_aid_count = 0
+        self.total_mutual_aid_volume = 0.0
+        self.total_tributes_paid = 0.0
+        self.total_charity_paid = 0.0
+        self.total_credit_sales_volume = 0.0
+        self.total_defaults_count = 0
+        self.total_defaulted_losses = 0.0
+
     def setup(
         self,
         num_consumers: int = 100,
@@ -35,6 +49,10 @@ class SimulationEngine:
         initial_price: float = 10.0,
         network_type: str = "small-world",
     ) -> None:
+        self.graeber_active = self.config.get("graeber", False)
+        self.social_peace = self.config.get("initial_peace", 1.0)
+        self.tribute_rate = self.config.get("tribute_rate", 0.05)
+
         for i in range(num_producers):
             cost = self.rng.uniform(3.0, 7.0)
             price = initial_price * self.rng.uniform(0.8, 1.2)
@@ -90,9 +108,9 @@ class SimulationEngine:
             self._ticks_executed = t + 1
             if verbose and t % 50 == 0:
                 logger.info(
-                    "Tick %d: price=%.2f, volume=%d, consumers=%d, producers=%d",
+                    "Tick %d: price=%.2f, volume=%d, consumers=%d, producers=%d, social_peace=%.2f",
                     t, tick_data["price"], tick_data["volume"],
-                    len(self.consumers), len(self.producers),
+                    len(self.consumers), len(self.producers), self.social_peace
                 )
 
         self._running = False
@@ -104,6 +122,19 @@ class SimulationEngine:
 
         self.event_bus.emit(Event("tick_start", tick))
 
+        # Dynamic Social Peace adjustment based on market and debt situation
+        if self.graeber_active:
+            self._adjust_social_peace(tick)
+
+        # 1. Base Communism step (Mutual aid/gifting between consumers in need)
+        if self.graeber_active and self.social_peace > 0.3:
+            self._execute_baseline_communism(tick)
+
+        # 2. Hierarchy step (Tributes/Charity based on class precedence)
+        if self.graeber_active:
+            self._execute_hierarchy_precedents(tick)
+
+        # 3. Normal Market Cycle (Producer pricing and Consumer buying)
         producer_actions = []
         for producer in self.producers:
             avg_price = sum(p.price for p in self.producers) / max(len(self.producers), 1)
@@ -133,6 +164,8 @@ class SimulationEngine:
             market_state = {
                 "current_price": self.market.get_current_price(),
                 "avg_neighbor_satisfaction": neighbor_satisfactions.get(consumer.id, 0.5),
+                "graeber": self.graeber_active,
+                "social_peace": self.social_peace,
             }
             actions = consumer.step(tick, market_state)
             consumer_actions.extend(actions)
@@ -144,37 +177,158 @@ class SimulationEngine:
                         price=action["price"],
                         quantity=action["quantity"],
                         tick=tick,
+                        use_credit=action.get("use_credit", False),
                     )
 
+        # Match buy/sell orders in the market
         transactions = self.market.match_orders(tick)
 
+        # Process transaction financial exchanges
         for tx in transactions:
             buyer = next((c for c in self.consumers if c.id == tx.buyer_id), None)
             seller = next((p for p in self.producers if p.id == tx.seller_id), None)
             if buyer and seller:
-                buyer.spend(tx.amount)
-                seller.sell(tx.quantity, tx.price)
-                buyer.on_purchase(tx.price, tx.quantity)
+                if tx.use_credit:
+                    # Graeber credit transaction: Seller extends credit, buyer incurs debt
+                    debt_amount = seller.sell_on_credit(buyer.id, tx.quantity, tx.price)
+                    buyer.incur_debt(seller.id, debt_amount)
+                    buyer.on_purchase(tx.price, tx.quantity)
+                    self.total_credit_sales_volume += debt_amount
+                else:
+                    # Standard cash transaction
+                    buyer.spend(tx.amount)
+                    seller.sell(tx.quantity, tx.price)
+                    buyer.on_purchase(tx.price, tx.quantity)
 
             self.event_bus.emit(Event(
                 "transaction", tick,
-                {"buyer": tx.buyer_id, "seller": tx.seller_id, "price": tx.price, "quantity": tx.quantity},
+                {"buyer": tx.buyer_id, "seller": tx.seller_id, "price": tx.price, "quantity": tx.quantity, "credit": tx.use_credit},
             ))
 
+        # 4. Debt Servicing / Repayment / Cash Squeeze
+        if self.graeber_active:
+            self._handle_debt_repayment_or_default(tick)
+
+        # Social Graph evolution
         self.social_graph.evolve(creation_rate=0.02, removal_rate=0.005)
 
         tick_data = self.market.finalize_tick(tick)
         tick_data["consumers"] = len(self.consumers)
         tick_data["producers"] = len(self.producers)
         tick_data["transactions_detail"] = [
-            {"buyer": tx.buyer_id, "seller": tx.seller_id, "price": tx.price, "quantity": tx.quantity}
+            {"buyer": tx.buyer_id, "seller": tx.seller_id, "price": tx.price, "quantity": tx.quantity, "credit": tx.use_credit}
             for tx in transactions
         ]
 
         avg_emotion = sum(c.emotional_state[0] for c in self.consumers) / max(len(self.consumers), 1)
         tick_data["avg_consumer_satisfaction"] = round(avg_emotion, 3)
 
+        # Graeber metric exports for plotting and analysis
+        if self.graeber_active:
+            tick_data["graeber"] = True
+            tick_data["social_peace"] = round(self.social_peace, 3)
+            tick_data["total_debt"] = round(sum(sum(c.debts.values()) for c in self.consumers), 2)
+            tick_data["mutual_aid_count"] = self.total_mutual_aid_count
+            tick_data["mutual_aid_volume"] = round(self.total_mutual_aid_volume, 2)
+            tick_data["tributes_paid"] = round(self.total_tributes_paid, 2)
+            tick_data["charity_paid"] = round(self.total_charity_paid, 2)
+            tick_data["credit_sales_volume"] = round(self.total_credit_sales_volume, 2)
+            tick_data["defaults_count"] = self.total_defaults_count
+            tick_data["defaulted_losses"] = round(self.total_defaulted_losses, 2)
+        else:
+            tick_data["graeber"] = False
+
         return tick_data
+
+    def _adjust_social_peace(self, tick: int) -> None:
+        """Co-evolves social peace with market volatility, inequality, and bad debt defaults."""
+        volatility = self.market._volatility()
+        # High volatility decays social peace
+        decay = volatility * 0.2
+
+        # Defaults decay social peace drastically (representing social anger and loss of trust)
+        total_recent_defaults = sum(c.defaults_count for c in self.consumers)
+        if total_recent_defaults > 0:
+            decay += min(0.15, total_recent_defaults * 0.01)
+
+        # Budgets inequality (Gini-like approximation) also decays peace
+        high_budgets = sum(1 for c in self.consumers if c.social_class == "high")
+        low_budgets = sum(1 for c in self.consumers if c.social_class == "low")
+        class_disparities = abs(high_budgets - low_budgets) / max(1, len(self.consumers))
+        decay += class_disparities * 0.05
+
+        self.social_peace = max(0.0, min(1.0, self.social_peace - decay + 0.01))
+
+    def _execute_baseline_communism(self, tick: int) -> None:
+        """Baseline communism step: neighbor agents help those in need with gifts (no debt)."""
+        for consumer in self.consumers:
+            if consumer.social_class == "low" and consumer.budget < 30.0:
+                # Seek mutual aid from neighbors
+                for neighbor_id in consumer.neighbors:
+                    neighbor = next((c for c in self.consumers if c.id == neighbor_id), None)
+                    if neighbor and neighbor.social_class in ["medium", "high"] and neighbor.budget > 80.0:
+                        # Give a gift of 5.0 to 15.0 budget units
+                        gift_amount = min(self.rng.uniform(5.0, 15.0), neighbor.budget * 0.15)
+                        if neighbor.give_communist_gift(consumer, gift_amount):
+                            self.total_mutual_aid_count += 1
+                            self.total_mutual_aid_volume += gift_amount
+                            break  # limit to one mutual aid gift per tick for simplicity
+
+    def _execute_hierarchy_precedents(self, tick: int) -> None:
+        """Hierarchy step: tributes paid to superior class, charity given to inferior class."""
+        for consumer in self.consumers:
+            if consumer.social_class == "low":
+                # Find a wealthy neighbor and pay a small tribute to establish peace/protection
+                for neighbor_id in consumer.neighbors:
+                    neighbor = next((c for c in self.consumers if c.id == neighbor_id), None)
+                    if neighbor and neighbor.social_class == "high" and consumer.budget > 5.0:
+                        tribute_amt = consumer.budget * self.tribute_rate
+                        if consumer.pay_tribute(neighbor.id, tribute_amt):
+                            neighbor.receive_tribute(consumer.id, tribute_amt)
+                            self.total_tributes_paid += tribute_amt
+                            break
+
+            elif consumer.social_class == "high" and consumer.budget > 180.0:
+                # Seek a poor neighbor and offer some charity to build prestige
+                for neighbor_id in consumer.neighbors:
+                    neighbor = next((c for c in self.consumers if c.id == neighbor_id), None)
+                    if neighbor and neighbor.social_class == "low" and neighbor.budget < 40.0:
+                        charity_amt = consumer.budget * self.tribute_rate
+                        if consumer.pay_charity(neighbor, charity_amt):
+                            self.total_charity_paid += charity_amt
+                            break
+
+    def _handle_debt_repayment_or_default(self, tick: int) -> None:
+        """Handles debt servicing, default triggers, and trust collapses."""
+        for consumer in self.consumers:
+            if consumer.debts:
+                # Consumer attempts to pay some of their debt
+                creditor_ids = list(consumer.debts.keys())
+                for creditor_id in creditor_ids:
+                    # Let's say they try to pay up to 10% of their debt per tick to maintain credibility
+                    target_payment = consumer.debts[creditor_id] * 0.1
+                    if target_payment > 0:
+                        paid = consumer.pay_debt(creditor_id, target_payment)
+                        if paid > 0:
+                            # Notify creditor (could be producer or other agent)
+                            producer = next((p for p in self.producers if p.id == creditor_id), None)
+                            if producer:
+                                producer.collect_debt(consumer.id, paid)
+
+                # If social peace is low (trust collapse / credit squeeze) and they are heavily indebted, default
+                if self.social_peace < 0.4 and sum(consumer.debts.values()) > consumer.budget * 0.8:
+                    defaulted_amt = consumer.trigger_default()
+                    self.total_defaults_count += 1
+                    self.total_defaulted_losses += defaulted_amt
+
+                    # Write off debt on the producers side
+                    for producer in self.producers:
+                        if consumer.id in producer.credits_extended:
+                            producer.write_off_debt(consumer.id)
+
+            elif consumer.is_bankrupt and self.social_peace > 0.6:
+                # Can recover from bankruptcy if overall social peace restores
+                consumer.recover_from_bankruptcy()
 
     def stop(self) -> None:
         self._running = False
@@ -186,7 +340,7 @@ class SimulationEngine:
 
     def get_summary(self) -> Dict[str, Any]:
         market_stats = self.market.get_statistics()
-        return {
+        summary = {
             "ticks": self._ticks_executed,
             "consumers": len(self.consumers),
             "producers": len(self.producers),
@@ -197,3 +351,18 @@ class SimulationEngine:
             "events_total": self.event_bus.get_event_count(),
             "transactions_total": self.event_bus.get_event_count("transaction"),
         }
+        if self.graeber_active:
+            summary.update({
+                "graeber_active": True,
+                "social_peace_final": round(self.social_peace, 3),
+                "total_mutual_aid_count": self.total_mutual_aid_count,
+                "total_mutual_aid_volume": round(self.total_mutual_aid_volume, 2),
+                "total_tributes_paid": round(self.total_tributes_paid, 2),
+                "total_charity_paid": round(self.total_charity_paid, 2),
+                "total_credit_sales_volume": round(self.total_credit_sales_volume, 2),
+                "total_defaults_count": self.total_defaults_count,
+                "total_defaulted_losses": round(self.total_defaulted_losses, 2),
+            })
+        else:
+            summary["graeber_active"] = False
+        return summary

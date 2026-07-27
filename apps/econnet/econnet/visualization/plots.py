@@ -160,3 +160,63 @@ def plot_crash_detection(
         plt.show()
     else:
         plt.close(fig)
+
+
+def plot_graeber_metrics(
+    tick_log: List[Dict[str, Any]],
+    output_path: Optional[str] = None,
+    show: bool = False,
+) -> None:
+    if not tick_log or not tick_log[0].get("graeber", False):
+        return
+
+    ticks = [d["tick"] for d in tick_log]
+    peace = [d.get("social_peace", 1.0) for d in tick_log]
+    debts = [d.get("total_debt", 0.0) for d in tick_log]
+    mutual_aid = [d.get("mutual_aid_count", 0) for d in tick_log]
+    defaults = [d.get("defaults_count", 0) for d in tick_log]
+
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
+    fig.suptitle("EconNet — Graeberian Co-evolution Dynamics", fontsize=14, fontweight="bold")
+
+    # Plot 1: Social Peace (Trust Cycle)
+    ax1.plot(ticks, peace, color="#9C27B0", linewidth=1.5, label="Pace Sociale / Fiducia")
+    ax1.axhline(y=0.4, color="red", linestyle="--", alpha=0.5, label="Soglia Squeeze di Credito")
+    ax1.set_ylabel("Livello Fiducia", fontsize=11)
+    ax1.set_title("Evoluzione della Fiducia Sociale (Pace Sociale)")
+    ax1.legend(loc="upper right")
+    ax1.grid(True, alpha=0.3)
+    ax1.set_ylim(0, 1.05)
+
+    # Plot 2: Virtual Debt vs. Cash defaults
+    ax2.plot(ticks, debts, color="#E91E63", linewidth=1.2, label="Debito Totale Pendente")
+    ax2.set_ylabel("Volume Debito", fontsize=11)
+    ax2.set_title("Co-evoluzione del Debito Virtuale")
+    ax2.legend(loc="upper left")
+    ax2.grid(True, alpha=0.3)
+
+    # Dual axis for defaults count
+    ax2_twin = ax2.twinx()
+    ax2_twin.plot(ticks, defaults, color="#F44336", linestyle=":", linewidth=1.5, label="Inadempienze (Defaults)")
+    ax2_twin.set_ylabel("Numero Fallimenti", fontsize=11, color="#F44336")
+    ax2_twin.tick_params(axis='y', labelcolor="#F44336")
+    ax2_twin.legend(loc="upper right")
+
+    # Plot 3: Baseline Communism (Mutual Aid)
+    ax3.plot(ticks, mutual_aid, color="#4CAF50", linewidth=1.5, label="Aiuto Mutuo (Comunismo di Base)")
+    ax3.set_xlabel("Tick", fontsize=11)
+    ax3.set_ylabel("Conteggio Regali", fontsize=11)
+    ax3.set_title("Frequenza Aiuto Mutuo (Comunismo di Base)")
+    ax3.legend(loc="upper left")
+    ax3.grid(True, alpha=0.3)
+    ax3.xaxis.set_major_formatter(mticker.FormatStrFormatter("%d"))
+
+    plt.tight_layout()
+
+    if output_path:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)

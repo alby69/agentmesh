@@ -25,6 +25,10 @@ class ProducerAgent(BaseEconAgent):
         self.sales_history: List[int] = []
         self.predicted_demand = float(production_rate)
 
+        # Graeberian concepts attributes
+        self.credits_extended: Dict[int, float] = {}  # consumer_id -> amount owed to us
+        self.total_defaulted_losses = 0.0
+
     def step(self, tick: int, market_state: Dict[str, Any]) -> List[Dict[str, Any]]:
         actions = []
         total_demand = market_state.get("total_demand", 0)
@@ -81,6 +85,12 @@ class ProducerAgent(BaseEconAgent):
             decrease = 0.04 + random.uniform(0, 0.02)
             self.price *= (1 - decrease)
 
+        # High outstanding bad debt causes producers to raise prices to cover losses (risk premium)
+        unpaid_credit = sum(self.credits_extended.values())
+        if unpaid_credit > 100.0:
+            risk_premium = min(0.3, unpaid_credit / 1000.0)
+            self.price *= (1 + risk_premium)
+
         min_price = self.cost_per_unit * 1.05
         max_price = self.cost_per_unit * 10
         self.price = max(min_price, min(max_price, self.price))
@@ -102,6 +112,32 @@ class ProducerAgent(BaseEconAgent):
         self.sales_history.append(actual)
         return revenue
 
+    # Graeberian methods
+
+    def sell_on_credit(self, consumer_id: int, quantity: int, price: float) -> float:
+        actual = min(quantity, self.stock)
+        if actual <= 0:
+            return 0.0
+        amount_owed = actual * price
+        self.stock -= actual
+        self.credits_extended[consumer_id] = self.credits_extended.get(consumer_id, 0.0) + amount_owed
+        self.sales_history.append(actual)
+        # We don't earn cash immediately, but we record the sale and potential revenue
+        return amount_owed
+
+    def collect_debt(self, consumer_id: int, amount: float) -> None:
+        if consumer_id in self.credits_extended:
+            self.credits_extended[consumer_id] -= amount
+            if self.credits_extended[consumer_id] <= 0.01:
+                del self.credits_extended[consumer_id]
+            self.earn(amount)
+
+    def write_off_debt(self, consumer_id: int) -> None:
+        if consumer_id in self.credits_extended:
+            loss = self.credits_extended[consumer_id]
+            self.total_defaulted_losses += loss
+            del self.credits_extended[consumer_id]
+
     def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()
         d.update({
@@ -111,5 +147,8 @@ class ProducerAgent(BaseEconAgent):
             "cost_per_unit": self.cost_per_unit,
             "predicted_demand": round(self.predicted_demand, 2),
             "production_rate": self.production_rate,
+            # Graeberian properties
+            "credits_extended": round(sum(self.credits_extended.values()), 2),
+            "total_defaulted_losses": round(self.total_defaulted_losses, 2),
         })
         return d
