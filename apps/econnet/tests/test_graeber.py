@@ -1,4 +1,3 @@
-import pytest
 from econnet.agents.consumer import ConsumerAgent
 from econnet.agents.producer import ProducerAgent
 from econnet.simulation.engine import SimulationEngine
