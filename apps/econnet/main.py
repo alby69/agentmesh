@@ -47,7 +47,7 @@ def main():
     if args.server:
         import uvicorn
         print("\n" + "="*60)
-        print(f"LAUNCHING ECONNET WEB DASHBOARD")
+        print("LAUNCHING ECONNET WEB DASHBOARD")
         print(f"Address: http://localhost:{args.port}")
         print("="*60 + "\n")
         uvicorn.run("econnet.web.app:app", host="0.0.0.0", port=args.port, reload=False)

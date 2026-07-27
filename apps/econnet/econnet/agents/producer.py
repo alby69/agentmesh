@@ -1,5 +1,5 @@
 import random
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from econnet.agents.base import BaseEconAgent
 

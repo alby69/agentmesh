@@ -1,7 +1,6 @@
-import pytest
 from econnet.simulation.engine import SimulationEngine
 from econnet.simulation.scenarios import ScenarioManager
-from econnet.simulation.events import PriceChangeEvent, TransactionEvent, AgentDecisionEvent, MarketCrashEvent
+from econnet.simulation.events import AgentDecisionEvent
 
 
 def test_scenario_manager_presets():

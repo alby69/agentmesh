@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 import plotly.graph_objects as go
-import json
 
 from econnet.simulation.engine import SimulationEngine
 from econnet.simulation.scenarios import ScenarioManager
@@ -80,7 +79,6 @@ def get_dashboard_html():
 
     last_tick_data = tick_log[-1] if tick_log else {}
     current_price = summary["market"].get("current_price", 10.0)
-    avg_price = summary["market"].get("avg_price", 10.0)
     volatility = summary["market"].get("price_volatility", 0.0)
     transactions = summary["transactions_total"]
 
@@ -96,6 +94,28 @@ def get_dashboard_html():
         f"<option value='{sc}' {'selected' if state.current_scenario == sc else ''}>{sc}</option>"
         for sc in ["Default ABM"] + ScenarioManager.get_available_scenarios()
     ])
+
+    graeber_card = ""
+    if state.engine.graeber_active:
+        graeber_card = f"""
+        <div class="bg-gray-800 p-6 rounded-xl border border-purple-700/50 shadow-md">
+            <h3 class="text-lg font-bold text-purple-400 mb-3">💜 Graeberian Credit Metrics</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-700 p-3 rounded border border-purple-900/40">
+                    <span class="text-xs text-gray-400 block mb-1">Social Peace/Trust</span>
+                    <span class="text-xl font-bold text-purple-300">{social_peace}</span>
+                </div>
+                <div class="bg-gray-700 p-3 rounded border border-purple-900/40">
+                    <span class="text-xs text-gray-400 block mb-1">Total Pending Debt</span>
+                    <span class="text-xl font-bold text-pink-400">{total_debt}</span>
+                </div>
+                <div class="bg-gray-700 p-3 rounded border border-purple-900/40">
+                    <span class="text-xs text-gray-400 block mb-1">Bad Debt Defaults</span>
+                    <span class="text-xl font-bold text-red-400">{defaults}</span>
+                </div>
+            </div>
+        </div>
+        """
 
     # Dynamic target ID for whole page refresh on HTMX
     html_content = f"""
@@ -219,25 +239,7 @@ def get_dashboard_html():
                     </div>
 
                     <!-- Graeberian Stats Card if active -->
-                    {f"""
-                    <div class="bg-gray-800 p-6 rounded-xl border border-purple-700/50 shadow-md">
-                        <h3 class="text-lg font-bold text-purple-400 mb-3">💜 Graeberian Credit Metrics</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="bg-gray-700 p-3 rounded border border-purple-900/40">
-                                <span class="text-xs text-gray-400 block mb-1">Social Peace/Trust</span>
-                                <span class="text-xl font-bold text-purple-300">{social_peace}</span>
-                            </div>
-                            <div class="bg-gray-700 p-3 rounded border border-purple-900/40">
-                                <span class="text-xs text-gray-400 block mb-1">Total Pending Debt</span>
-                                <span class="text-xl font-bold text-pink-400">{total_debt}</span>
-                            </div>
-                            <div class="bg-gray-700 p-3 rounded border border-purple-900/40">
-                                <span class="text-xs text-gray-400 block mb-1">Bad Debt Defaults</span>
-                                <span class="text-xl font-bold text-red-400">{defaults}</span>
-                            </div>
-                        </div>
-                    </div>
-                    """ if state.engine.graeber_active else ""}
+                    {graeber_card}
 
                     <!-- Interactive Chart Container -->
                     <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg min-h-[400px]">
