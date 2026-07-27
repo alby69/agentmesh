@@ -44,7 +44,7 @@ Definizione delle fondamenta del simulatore: package, classi base, configurazion
 Implementazione della topologia di rete e del meccanismo di mercato.
 
 ### 2.1 Social Graph ✅
-- [x] Grafo NetworkX con agenti come nodi
+- [x] Grafo NetworkX con agenti como nodi
 - [x] Archi pesati per forza di influenza
 - [x] Generazione topologie: random, small-world, scale-free
 - [x] Evoluzione dinamica della rete (creazione/rottura archi)
@@ -183,3 +183,41 @@ Quando un modello predittivo viene reso pubblico e usato dagli agenti, il sistem
 | Visualizzazione | Matplotlib (+ Plotly per web) |
 | Test | pytest, pytest-asyncio |
 | Build | hatchling, uv workspace |
+
+---
+
+## Fase 6: Monorepo Integration & Standardization ✅ COMPLETATA
+
+Allineamento al template standard del monorepo e integrazione con i pacchetti core.
+
+- [x] **Refactor `BaseEconAgent`**: eredita da `agentmesh_core.BaseAgent`
+- [x] **Configurazione con `pydantic-settings`**: aggiunto `config.py` per caricare parametri tramite variabili d'ambiente (`ECONNET_`)
+- [x] **Dipendenze monorepo**: aggiunto `agentmesh-core` e `agentmesh-relay` come dipendenze UV workspace in `pyproject.toml`
+
+## Fase 7: Persistence & REST API ✅ COMPLETATA
+
+Persistenza delle simulazioni in formato SQLite con WAL mode.
+
+- [x] **SQLite WAL Schema**: implementato in `web/db.py` con tabelle per `simulations`, `ticks`, `agents`, `transactions`, `events`
+- [x] **Integrazione con `main.py`**: salvataggio automatico se eseguito con flag `--output-db`
+- [x] **Integrazione con Dashboard**: tabella di visualizzazione ed eliminazione delle simulazioni passate direttamente nel browser
+
+## Fase 8: Advanced AI & Multi-Agent Economy ✅ COMPLETATA
+
+Evoluzione della complessità economica e del livello di intelligenza degli agenti.
+
+- [x] **DQN (Deep Q-Network)**: implementato in `agents/dqn_consumer.py` usando PyTorch continuo, con replay buffer e target network per `ConsumerAgent`
+- [x] **Multi-Good Market**: aggiunta la classe `Product` in `simulation/product.py` e supporto per molteplici order-book separati in `Market`
+- [x] **Pricing e Decisioni Multi-Bene**: i produttori e consumatori supportano tracciamento e decisioni separate per bene
+
+## Fase 9: Decentralized Simulation Mesh ✅ COMPLETATA
+
+Connessione di EconNet alla mesh decentralizzata P2P di AgentMesh.
+
+- [x] **Nostr Event Stream**: implementato `relay/publisher.py` con `EconNetNostrPublisher` per pubblicare aggiornamenti sui prezzi, transazioni e crash di mercato su Nostr
+- [x] **Standardizzazione dei Messaggi**: eventi firmati e pubblicati come NIP-01 text notes con tag custom (`econnet-price`, `econnet-tx`, `econnet-crash`)
+
+## Fase 10: Advanced UX & Analytics ✅ COMPLETATA
+
+- [x] **Price Charts per Product**: grafici interattivi multi-asse di Plotly che mostrano l'evoluzione dei prezzi per singolo prodotto della simulazione
+- [x] **Simulation Manager in UI**: interfaccia per salvare, elencare e pulire le simulazioni passate memorizzate in SQLite

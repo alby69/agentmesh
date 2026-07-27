@@ -75,8 +75,17 @@ class ProducerAgent(BaseEconAgent):
         self.sales_history: List[int] = []
         self.predicted_demand = float(production_rate)
 
+        # Multi-product support
+        self.stocks_by_product: Dict[int, int] = {0: initial_stock}
+        self.prices_by_product: Dict[int, float] = {0: price}
+        self.costs_by_product: Dict[int, float] = {0: cost_per_unit}
+        self.production_rates_by_product: Dict[int, int] = {0: production_rate}
+        self.predicted_demand_by_product: Dict[int, float] = {0: float(production_rate)}
+        self.demand_history_by_product: Dict[int, List[float]] = {0: []}
+        self.forecasters_by_product: Dict[int, DemandForecaster] = {0: DemandForecaster()}
+
         # ML Demand Forecaster instance
-        self.forecaster = DemandForecaster()
+        self.forecaster = self.forecasters_by_product[0]
 
         # Graeberian concepts attributes
         self.credits_extended: Dict[int, float] = {}  # consumer_id -> amount owed to us
@@ -84,26 +93,60 @@ class ProducerAgent(BaseEconAgent):
 
     def step(self, tick: int, market_state: Dict[str, Any]) -> List[Dict[str, Any]]:
         actions = []
+        product_prices = market_state.get("product_prices", {0: self.price})
         total_demand = market_state.get("total_demand", 0)
-        competitor_avg_price = market_state.get("competitor_avg_price", self.price)
         recent_volume = market_state.get("recent_volume", 0.0)
         avg_emotion = market_state.get("avg_emotion", 0.5)
 
-        self._produce()
-        self._record_demand(total_demand)
-        self._update_demand_forecast(self.price, recent_volume, avg_emotion)
-        self._adjust_price(competitor_avg_price)
+        # Make decisions for each product
+        for prod_id, current_price in product_prices.items():
+            if prod_id not in self.stocks_by_product:
+                self.stocks_by_product[prod_id] = self.initial_stock
+                self.prices_by_product[prod_id] = self.price
+                self.costs_by_product[prod_id] = self.cost_per_unit
+                self.production_rates_by_product[prod_id] = self.production_rate
+                self.predicted_demand_by_product[prod_id] = float(self.production_rate)
+                self.demand_history_by_product[prod_id] = []
+                self.forecasters_by_product[prod_id] = DemandForecaster()
 
-        if self.stock > 0:
-            action = {
-                "type": "sell",
-                "agent_id": self.id,
-                "tick": tick,
-                "price": self.price,
-                "stock": self.stock,
-                "predicted_demand": round(self.predicted_demand, 2),
-            }
-            actions.append(action)
+            # Temporarily align single-product fields for backward compatibility inside helper methods
+            self.stock = self.stocks_by_product[prod_id]
+            self.price = self.prices_by_product[prod_id]
+            self.cost_per_unit = self.costs_by_product[prod_id]
+            self.production_rate = self.production_rates_by_product[prod_id]
+            self.predicted_demand = self.predicted_demand_by_product[prod_id]
+            self.demand_history = self.demand_history_by_product[prod_id]
+            self.forecaster = self.forecasters_by_product[prod_id]
+
+            self._produce()
+            self._record_demand(total_demand)
+            self._update_demand_forecast(self.price, recent_volume, avg_emotion)
+
+            competitor_avg_price = market_state.get("competitor_avg_prices", {}).get(prod_id, current_price)
+            self._adjust_price(competitor_avg_price)
+
+            # Store updated properties back
+            self.stocks_by_product[prod_id] = self.stock
+            self.prices_by_product[prod_id] = self.price
+            self.predicted_demand_by_product[prod_id] = self.predicted_demand
+            self.demand_history_by_product[prod_id] = self.demand_history
+
+            if self.stock > 0:
+                action = {
+                    "type": "sell",
+                    "agent_id": self.id,
+                    "tick": tick,
+                    "price": self.price,
+                    "stock": self.stock,
+                    "predicted_demand": round(self.predicted_demand, 2),
+                    "product_id": prod_id,
+                }
+                actions.append(action)
+
+        # Re-align with product 0 for compatibility
+        self.stock = self.stocks_by_product[0]
+        self.price = self.prices_by_product[0]
+        self.predicted_demand = self.predicted_demand_by_product[0]
 
         self.record_state(tick)
         return actions
@@ -162,24 +205,32 @@ class ProducerAgent(BaseEconAgent):
         self.price = round(self.price, 2)
         self.price_history.append(self.price)
 
-    def sell(self, quantity: int, price: float) -> float:
-        actual = min(quantity, self.stock)
+    def sell(self, quantity: int, price: float, product_id: int = 0) -> float:
+        current_stock = self.stocks_by_product.get(product_id, self.stock)
+        actual = min(quantity, current_stock)
         if actual <= 0:
             return 0.0
         revenue = actual * price
-        self.stock -= actual
+
+        self.stocks_by_product[product_id] = current_stock - actual
+        self.stock = self.stocks_by_product[0] # backward compatible self.stock alignment
+
         self.earn(revenue)
         self.sales_history.append(actual)
         return revenue
 
     # Graeberian methods
 
-    def sell_on_credit(self, consumer_id: int, quantity: int, price: float) -> float:
-        actual = min(quantity, self.stock)
+    def sell_on_credit(self, consumer_id: int, quantity: int, price: float, product_id: int = 0) -> float:
+        current_stock = self.stocks_by_product.get(product_id, self.stock)
+        actual = min(quantity, current_stock)
         if actual <= 0:
             return 0.0
         amount_owed = actual * price
-        self.stock -= actual
+
+        self.stocks_by_product[product_id] = current_stock - actual
+        self.stock = self.stocks_by_product[0] # backward compatible self.stock alignment
+
         self.credits_extended[consumer_id] = self.credits_extended.get(consumer_id, 0.0) + amount_owed
         self.sales_history.append(actual)
         # We don't earn cash immediately, but we record the sale and potential revenue

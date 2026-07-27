@@ -1,3 +1,11 @@
+import sys
+import os
+# Ensure the econnet root directory is in sys.path so nested modules can be imported
+web_dir = os.path.dirname(os.path.abspath(__file__))
+econnet_dir = os.path.dirname(web_dir)
+apps_econnet_dir = os.path.dirname(econnet_dir)
+sys.path.insert(0, apps_econnet_dir)
+
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 import plotly.graph_objects as go
@@ -39,7 +47,12 @@ def generate_plotly_charts(tick_log, engine):
 
     # Price chart
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=ticks, y=prices, mode='lines+markers', name='Price', line=dict(color='#2196F3', width=2)))
+    if hasattr(engine.market, "price_history_by_product") and engine.market.price_history_by_product:
+        for prod_id, history in engine.market.price_history_by_product.items():
+            fig.add_trace(go.Scatter(x=ticks, y=history[:len(ticks)], mode='lines+markers', name=f'Product {prod_id}', line=dict(width=2)))
+    else:
+        fig.add_trace(go.Scatter(x=ticks, y=prices, mode='lines+markers', name='Price', line=dict(color='#2196F3', width=2)))
+
     fig.update_layout(
         title="Emergent Market Price",
         xaxis_title="Ticks",
@@ -76,6 +89,38 @@ def get_dashboard_html():
     tick_log = state.tick_log
 
     charts_html = generate_plotly_charts(tick_log, state.engine)
+
+    # Fetch past simulations from DB
+    from econnet.web.db import EconNetDB
+    db = EconNetDB()
+    past_sims = db.get_past_simulations()
+    db.close()
+
+    past_sims_rows = ""
+    for sim in past_sims:
+        past_sims_rows += f"""
+        <tr class="border-b border-gray-700 hover:bg-gray-700/30">
+            <td class="p-3 font-semibold text-blue-400">{sim["id"]}</td>
+            <td class="p-3 text-gray-300">{sim["scenario"]}</td>
+            <td class="p-3 text-gray-400">{sim["ticks"]}</td>
+            <td class="p-3 font-bold text-green-400">${sim["final_price"]:.2f}</td>
+            <td class="p-3 text-pink-400">{sim["gini_index"]:.3f}</td>
+            <td class="p-3 text-gray-400 text-xs">{sim["created_at"]}</td>
+            <td class="p-3 text-center">
+                <button hx-delete="/simulation/{sim["id"]}" hx-target="#dashboard-wrapper" hx-swap="outerHTML"
+                        class="text-red-500 hover:text-red-400 font-bold px-2 py-1 rounded bg-red-950/20 hover:bg-red-950/50">
+                    Delete
+                </button>
+            </td>
+        </tr>
+        """
+
+    if not past_sims_rows:
+        past_sims_rows = """
+        <tr>
+            <td colspan="7" class="p-4 text-center text-gray-500">No past simulations saved yet. Select 'Save Run to SQLite DB' on simulation complete!</td>
+        </tr>
+        """
 
     last_tick_data = tick_log[-1] if tick_log else {}
     current_price = summary["market"].get("current_price", 10.0)
@@ -177,6 +222,10 @@ def get_dashboard_html():
                                     class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded transition duration-200 shadow-md">
                                 Run 50 Ticks
                             </button>
+                            <button hx-post="/save" hx-target="#dashboard-wrapper" hx-swap="outerHTML"
+                                    class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-4 rounded transition duration-200 shadow-md">
+                                Save Run to SQLite DB
+                            </button>
                             <button hx-post="/reset" hx-target="#dashboard-wrapper" hx-swap="outerHTML"
                                     class="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded transition duration-200 shadow-md">
                                 Reset Simulation
@@ -248,6 +297,29 @@ def get_dashboard_html():
                             {charts_html}
                         </div>
                     </div>
+
+                    <!-- History Table Container -->
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+                        <h2 class="text-xl font-bold mb-4 text-teal-400">🗄️ Saved Simulations (SQLite)</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-gray-700 text-gray-400 text-sm">
+                                        <th class="p-3">ID</th>
+                                        <th class="p-3">Scenario</th>
+                                        <th class="p-3">Ticks</th>
+                                        <th class="p-3">Final Price</th>
+                                        <th class="p-3">Final Gini</th>
+                                        <th class="p-3">Created At</th>
+                                        <th class="p-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {past_sims_rows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -279,4 +351,52 @@ async def post_step(count: int):
 @app.post("/reset", response_class=HTMLResponse)
 async def post_reset():
     state.reset()
+    return HTMLResponse(content=get_dashboard_html())
+
+
+@app.post("/save", response_class=HTMLResponse)
+async def post_save():
+    if state.tick_log:
+        from econnet.web.db import EconNetDB
+        import uuid
+        sim_id = f"sim-{uuid.uuid4().hex[:8]}"
+        db = EconNetDB()
+        summary = state.engine.get_summary()
+        final_price = summary["market"].get("current_price", 0.0)
+        gini_index = state.tick_log[-1].get("gini_index", 0.0)
+
+        # Format transaction list
+        txs_list = []
+        for tick_entry in state.tick_log:
+            for d_tx in tick_entry.get("transactions_detail", []):
+                txs_list.append({
+                    "tick": tick_entry["tick"],
+                    "buyer_id": d_tx["buyer"],
+                    "seller_id": d_tx["seller"],
+                    "price": d_tx["price"],
+                    "quantity": d_tx["quantity"],
+                    "use_credit": d_tx["credit"]
+                })
+
+        db.save_simulation_run(
+            sim_id=sim_id,
+            scenario=state.current_scenario,
+            ticks_count=len(state.tick_log),
+            final_price=final_price,
+            gini_index=gini_index,
+            graeber_active=state.engine.graeber_active,
+            tick_log=state.tick_log,
+            agent_states=state.engine.get_agent_states(),
+            transactions_log=txs_list
+        )
+        db.close()
+    return HTMLResponse(content=get_dashboard_html())
+
+
+@app.delete("/simulation/{sim_id}", response_class=HTMLResponse)
+async def delete_simulation(sim_id: str):
+    from econnet.web.db import EconNetDB
+    db = EconNetDB()
+    db.delete_simulation(sim_id)
+    db.close()
     return HTMLResponse(content=get_dashboard_html())

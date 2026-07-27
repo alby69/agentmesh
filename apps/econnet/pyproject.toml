@@ -8,7 +8,13 @@ dependencies = [
     "numpy>=1.26.0",
     "pandas>=2.2.0",
     "matplotlib>=3.9.0",
+    "agentmesh-core",
+    "agentmesh-relay",
 ]
+
+[tool.uv.sources]
+agentmesh-core = { workspace = true }
+agentmesh-relay = { workspace = true }
 
 [project.optional-dependencies]
 ml = [
