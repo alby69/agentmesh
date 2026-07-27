@@ -11,6 +11,7 @@ class Order:
     price: float
     quantity: int
     tick: int
+    use_credit: bool = False  # Supports Graeberian virtual credit orders
 
 
 @dataclass
@@ -21,6 +22,7 @@ class Transaction:
     price: float
     quantity: int
     amount: float
+    use_credit: bool = False
 
 
 class Market:
@@ -38,7 +40,7 @@ class Market:
         self.buy_orders.clear()
         self.sell_orders.clear()
 
-    def submit_buy(self, agent_id: int, price: float, quantity: int, tick: int) -> Order:
+    def submit_buy(self, agent_id: int, price: float, quantity: int, tick: int, use_credit: bool = False) -> Order:
         order = Order(
             order_id=self._next_id(),
             agent_id=agent_id,
@@ -46,6 +48,7 @@ class Market:
             price=price,
             quantity=quantity,
             tick=tick,
+            use_credit=use_credit,
         )
         self.buy_orders.append(order)
         return order
@@ -88,6 +91,7 @@ class Market:
                     price=round(match_price, 4),
                     quantity=match_qty,
                     amount=round(match_price * match_qty, 4),
+                    use_credit=buy_order.use_credit,
                 )
                 matched.append(tx)
                 self.transactions.append(tx)
@@ -101,6 +105,7 @@ class Market:
                         price=buy_order.price,
                         quantity=buy_order.quantity - match_qty,
                         tick=buy_order.tick,
+                        use_credit=buy_order.use_credit,
                     )
                     sell_order = next(sell_iter, None)
                 elif sell_order.quantity > match_qty:
@@ -142,6 +147,8 @@ class Market:
     def finalize_tick(self, tick: int) -> Dict[str, Any]:
         total_volume = sum(tx.quantity for tx in self._tick_transactions)
         total_amount = sum(tx.amount for tx in self._tick_transactions)
+        total_credit_volume = sum(tx.quantity for tx in self._tick_transactions if tx.use_credit)
+        total_credit_amount = sum(tx.amount for tx in self._tick_transactions if tx.use_credit)
 
         current_price = self.get_current_price()
         self.price_history.append(current_price)
@@ -152,6 +159,8 @@ class Market:
             "price": current_price,
             "volume": total_volume,
             "amount": total_amount,
+            "credit_volume": total_credit_volume,
+            "credit_amount": total_credit_amount,
             "transactions": len(self._tick_transactions),
         }
 
