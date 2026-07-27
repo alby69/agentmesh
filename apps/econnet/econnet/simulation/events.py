@@ -11,6 +11,49 @@ class Event:
     data: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class PriceChangeEvent(Event):
+    def __init__(self, tick: int, price: float, old_price: float, agent_id: Optional[int] = None):
+        super().__init__("PriceChange", tick, {
+            "price": price,
+            "old_price": old_price,
+            "agent_id": agent_id
+        })
+
+
+@dataclass
+class TransactionEvent(Event):
+    def __init__(self, tick: int, buyer_id: int, seller_id: int, price: float, quantity: int, amount: float, use_credit: bool = False):
+        super().__init__("Transaction", tick, {
+            "buyer_id": buyer_id,
+            "seller_id": seller_id,
+            "price": price,
+            "quantity": quantity,
+            "amount": amount,
+            "use_credit": use_credit
+        })
+
+
+@dataclass
+class AgentDecisionEvent(Event):
+    def __init__(self, tick: int, agent_id: int, agent_type: str, decision: str, details: Dict[str, Any]):
+        super().__init__("AgentDecision", tick, {
+            "agent_id": agent_id,
+            "agent_type": agent_type,
+            "decision": decision,
+            "details": details
+        })
+
+
+@dataclass
+class MarketCrashEvent(Event):
+    def __init__(self, tick: int, return_rate: float, current_price: float):
+        super().__init__("MarketCrash", tick, {
+            "return_rate": return_rate,
+            "current_price": current_price
+        })
+
+
 class EventBus:
     def __init__(self):
         self._handlers: Dict[str, List[Callable]] = defaultdict(list)

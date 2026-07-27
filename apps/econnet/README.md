@@ -13,26 +13,43 @@ EconNet supera queste limitazioni usando un approccio **bottom-up**: popola il m
 - **Superamento dell'Homo Economicus**: gli agenti non risolvono equazioni di ottimizzazione globale. Hanno uno stato cognitivo (emozioni, budget, suscettibilità sociale) che evolve nel tempo.
 - **Prezzo emergente**: il prezzo di mercato non è imposto a priori, ma emerge spontaneamente dalle transazioni bilaterali tra agenti.
 - **Rete sociale**: gli agenti sono connessi in un grafo (NetworkX) che simula passaparola ed effetto gregge.
-- **AI predittiva**: i produttori usano modelli ML per prevedere la domanda, sperimentando cosa succede quando si tenta di prevedere un sistema riflessivo.
-- **Visualizzazione**: andamento dei prezzi, bolle speculative e crash in tempo reale con matplotlib.
+- **AI predittiva (DemandForecaster)**: i produttori usano reti neurali PyTorch ad aggiornamento continuo online per prevedere la domanda aggregata.
+- **Apprendimento per Rinforzo (QLearner)**: i consumatori usano algoritmi discreti di Q-learning per ottimizzare dinamicamente le loro decisioni di acquisto tick dopo tick.
+- **Pace Sociale & Credito (Graeberian Mode)**: simula sistemi di fiducia basati sull'estensione del credito virtuale, tributi reciproci e fallimenti (default) coordinati da un parametro di coesione sociale.
+- **Dashboard Interattiva**: pannello web completo FastAPI + HTMX + Plotly per controllare e analizzare la simulazione visivamente.
 
 ## Quick Start
+
+### Esecuzione CLI standard
 
 ```bash
 # Esegui una simulazione base
 PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 200
 
-# Con grafici (prezzi, emozioni, budget, crash)
+# Con grafici statici matplotlib (prezzi, emozioni, budget, crash)
 PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 500 --visualize
 
 # Più agenti, rete scale-free
 PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 300 --consumers 200 --producers 20 --network scale-free --visualize
 ```
 
+### Avvio Dashboard Interattiva Web (FastAPI + HTMX)
+
+```bash
+# Lancia il server web interattivo su http://localhost:8000
+PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --server --port 8000
+```
+
+Con la Dashboard Web puoi:
+- Scegliere scenari preimpostati (es. "Bolla 2008", "Crisi pandemia", "Boom tecnologico").
+- Avanzare di 1, 10 o 50 Tick alla volta.
+- Visualizzare in tempo reale i grafici interattivi di Plotly (prezzi, indice Gini di disuguaglianza, effetto gregge).
+- Reset istantaneo e monitoraggio delle metriche di rete NetworkX.
+
 ### Output
 
-- **Console**: riepilogo alla fine (prezzo, volatilità, transazioni, densità rete)
-- **`--visualize`**: genera 4 grafici PNG nella cartella di output (`econnet_sim_price.png`, `_emotions.png`, `_budgets.png`, `_crashes.png`)
+- **Console**: riepilogo alla fine (prezzo, volatilità, transazioni, densità rete, metriche Graeber)
+- **`--visualize`**: genera 5 grafici PNG nella cartella di output (`econnet_sim_price.png`, `_emotions.png`, `_budgets.png`, `_crashes.png`, `_graeber.png`)
 - **`--output log.json`**: salva il log di ogni tick in JSON per analisi successiva
 - **`--output-dir path/`**: cartella dove salvare i file (default: `apps/econnet/output/`)
 
@@ -40,31 +57,38 @@ PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 300 --consume
 
 ```
 apps/econnet/
-├── main.py                          # CLI entry point
+├── main.py                          # CLI entry point e Web Launcher
 ├── pyproject.toml                   # Dipendenze
 ├── README.md
-├── ROADMAP.md                       # Piano di implementazione
+├── ROADMAP.md                       # Piano di implementazione completo (Fase 1-5 completate!)
 ├── econnet/
 │   ├── __init__.py
 │   ├── agents/
 │   │   ├── __init__.py
-│   │   ├── consumer.py              # ConsumerAgent (budget, emozioni, euristiche)
-│   │   ├── producer.py              # ProducerAgent (pricing dinamico, scorte, ML)
+│   │   ├── consumer.py              # ConsumerAgent (budget, emozioni, euristiche, QLearner RL)
+│   │   ├── producer.py              # ProducerAgent (pricing dinamico, scorte, PyTorch DemandForecaster)
 │   │   └── base.py                  # BaseAgent con stato comune
 │   ├── network/
 │   │   ├── __init__.py
-│   │   └── social_graph.py          # Grafo di influenza sociale (NetworkX)
+│   │   └── social_graph.py          # Grafo sociale (NetworkX, herd effect, sentiment propagation)
 │   ├── simulation/
 │   │   ├── __init__.py
-│   │   ├── engine.py                # Motore tick-by-tick
+│   │   ├── engine.py                # Motore tick-by-tick (Eventi di classe, indice Gini)
 │   │   ├── market.py                # Mercato (ordine book, transazioni)
-│   │   └── events.py                # Eventi e cronologia
-│   └── visualization/
+│   │   ├── scenarios.py             # ScenarioManager con presets ("Bolla 2008", etc.)
+│   │   └── events.py                # Eventi di classe e EventBus
+│   ├── visualization/
+│   │   ├── __init__.py
+│   │   └── plots.py                 # Grafici matplotlib (prezzi, bolle, crash)
+│   └── web/
 │       ├── __init__.py
-│       └── plots.py                 # Grafici matplotlib (prezzi, bolle, crash)
+│       └── app.py                   # Dashboard Web FastAPI + HTMX + Plotly
 └── tests/
     ├── __init__.py
-    └── test_simulation.py           # Test del motore di simulazione
+    ├── test_graeber.py
+    ├── test_ml.py                   # Test unitari QLearner e DemandForecaster
+    ├── test_scenarios.py            # Test ScenarioManager ed eventi
+    └── test_simulation.py           # Test motore e mercato
 ```
 
 ## Architettura
@@ -72,40 +96,38 @@ apps/econnet/
 ### ConsumerAgent
 
 Ogni consumatore ha:
-- **Budget**: risorse monetarie disponibili
-- **Stato emotivo**: vettore [soddisfazione, paura, entusiasmo, imitazione]
-- **Soglia di acquisto**: decidesse quando comprare in base a prezzo percepito vs utilità
-- **Rete sociale**: liste di vicini che influenzano le decisioni
+- **Budget & Classe Sociale**: risorse monetarie disponibili che definiscono lo stato sociale (low, medium, high).
+- **Stato emotivo**: vettore [soddisfazione, paura, entusiasmo, imitazione].
+- **Q-Learning**: discretizza lo stato economico/sociale e impara la politica d'acquisto ottimale per massimizzare la soddisfazione a lungo termine e minimizzare il debito.
 
 ### ProducerAgent
 
 Ogni produttore ha:
-- **Scorte**: unità di prodotto disponibili
-- **Prezzo attuale**: aggiornato dinamicamente
-- **Modello predittivo**: rete neurale semplice che stima la domanda futura
-- **Strategia**: pricing basato su costi, domanda prevista e concorrenza
+- **Scorte & Produzione**: unità prodotte per tick entro i costi di budget.
+- **PyTorch SGD Demand Forecaster**: rete neurale a 3 input (prezzo, volume, sentimento) che stima la domanda del tick successivo con aggiornamento online.
+- **Pricing dinamico**: varia il prezzo in base a scorte disponibili, forecast ML, e concorrenza.
 
 ### Market
 
 Il mercato è un order book decentralizzato:
-- Gli agenti pubblicano offerte/domande
-- Le transazioni avvengono bilateralmente
-- Il prezzo emerge dall'incontro domanda-offerta
-- Nessun prezzo di equilibrio imposto
+- Gli agenti pubblicano offerte/domande.
+- Le transazioni avvengono bilateralmente.
+- Il prezzo emerge dall'incontro domanda-offerta.
+- Supporta transazioni basate su credito virtuale.
 
 ### Social Graph
 
 Grafo NetworkX dove:
-- I nodi sono agenti (consumatori e produttori)
-- Gli archi rappresentano influenza sociale
-- L'effetto gregge si manifesta come cascata di decisioni simili
-- La rete evolve nel tempo (archi si creano/rompono)
+- I nodi sono agenti (consumatori e produttori).
+- Gli archi rappresentano influenza sociale.
+- Calcola in tempo reale metriche complesse como **Herd Effect** (effetto gregge) e **Sentiment Propagation** (propagazione del sentiment dei vicini).
 
 ## Stack
 
-- **Python 3.10+**, async/simulazione sincrona
+- **Python 3.10+**
 - **NetworkX**: grafi e reti sociali
 - **NumPy / Pandas**: dati e calcoli
-- **Matplotlib**: visualizzazione
-- **PyTorch** (opzionale): reti neurali per agenti produttori
-- **pytest**: testing
+- **Matplotlib / Plotly**: visualizzazione statica e interattiva
+- **PyTorch**: reti neurali predittive online
+- **FastAPI / Uvicorn / HTMX**: server e dashboard web interattiva
+- **pytest**: testing automatico
