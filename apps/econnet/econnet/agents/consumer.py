@@ -59,12 +59,14 @@ class ConsumerAgent(BaseEconAgent):
         social_susceptibility: float = 0.5,
         anchoring: float = 0.3,
         use_rl: bool = True,
+        use_dqn: bool = False,
     ):
         super().__init__(agent_id, budget)
         self.risk_aversion = max(0.0, min(1.0, risk_aversion))
         self.social_susceptibility = max(0.0, min(1.0, social_susceptibility))
         self.anchoring = max(0.0, min(1.0, anchoring))
         self.use_rl = use_rl
+        self.use_dqn = use_dqn
 
         # Emotional state: [satisfaction, fear, enthusiasm, imitation]
         self.emotional_state = [0.5, 0.1, 0.3, 0.2]
@@ -73,8 +75,18 @@ class ConsumerAgent(BaseEconAgent):
         self.reference_price = 0.0
         self.neighbors: List[int] = []
 
-        # Q-Learner instance
+        # Multi-product support
+        self.needs_level_by_product: Dict[int, float] = {0: self.needs_level}
+        self.last_purchase_price_by_product: Dict[int, Optional[float]] = {0: None}
+        self.reference_price_by_product: Dict[int, float] = {0: 0.0}
+
+        # Q-Learner and DQN instances
         self.q_learner = QLearner()
+        if self.use_dqn:
+            from econnet.agents.dqn_consumer import DQNAgent
+            self.dqn_agent = DQNAgent()
+        else:
+            self.dqn_agent = None
 
         # Graeberian concepts attributes
         self.social_class = "medium"
@@ -102,82 +114,103 @@ class ConsumerAgent(BaseEconAgent):
 
     def step(self, tick: int, market_state: Dict[str, Any]) -> List[Dict[str, Any]]:
         actions = []
-        current_price = market_state.get("current_price", 10.0)
+        product_prices = market_state.get("product_prices", {0: market_state.get("current_price", 10.0)})
         avg_neighbor_satisfaction = market_state.get("avg_neighbor_satisfaction", 0.5)
 
         # Update social class dynamically based on current budget
         self.update_social_class()
 
-        self._update_emotions(current_price, avg_neighbor_satisfaction)
-
-        buy_threshold = self._compute_buy_threshold(current_price)
-        willingness = self._compute_willingness(current_price, avg_neighbor_satisfaction)
-
         graeber_active = market_state.get("graeber", False)
         social_peace = market_state.get("social_peace", 1.0)
 
-        can_buy = False
-        use_credit = False
-        quantity = 0
+        # Make decisions for each available product
+        for prod_id, current_price in product_prices.items():
+            # Initialize state for product if not exists
+            if prod_id not in self.needs_level_by_product:
+                self.needs_level_by_product[prod_id] = random.uniform(0.3, 0.8)
+                self.last_purchase_price_by_product[prod_id] = None
+                self.reference_price_by_product[prod_id] = current_price
 
-        if self.use_rl:
-            # RL-based Decision Making
-            # State: [price, budget, satisfaction, social_pressure]
-            social_pressure = self.emotional_state[3] * avg_neighbor_satisfaction
-            state = [current_price, self.budget, self.emotional_state[0], social_pressure]
+            # Use local product properties temporarily so internal methods can be backward-compatible
+            self.needs_level = self.needs_level_by_product[prod_id]
+            self.last_purchase_price = self.last_purchase_price_by_product[prod_id]
+            self.reference_price = self.reference_price_by_product[prod_id]
 
-            actions_available = [0, 1, 2]
-            action_chosen = self.q_learner.choose_action(state, actions_available)
+            self._update_emotions(current_price, avg_neighbor_satisfaction)
+            buy_threshold = self._compute_buy_threshold(current_price)
+            willingness = self._compute_willingness(current_price, avg_neighbor_satisfaction)
 
-            if action_chosen > 0:
-                if current_price * action_chosen <= self.budget:
-                    can_buy = True
-                    quantity = action_chosen
-                elif graeber_active and social_peace > 0.4 and not self.is_bankrupt:
-                    can_buy = True
-                    use_credit = True
-                    quantity = action_chosen
+            can_buy = False
+            use_credit = False
+            quantity = 0
+
+            if self.use_rl:
+                # RL-based Decision Making
+                social_pressure = self.emotional_state[3] * avg_neighbor_satisfaction
+                state = [current_price, self.budget, self.emotional_state[0], social_pressure]
+
+                actions_available = [0, 1, 2]
+                if self.use_dqn and self.dqn_agent:
+                    action_chosen = self.dqn_agent.choose_action(state, actions_available)
+                else:
+                    action_chosen = self.q_learner.choose_action(state, actions_available)
+
+                if action_chosen > 0:
+                    if current_price * action_chosen <= self.budget:
+                        can_buy = True
+                        quantity = action_chosen
+                    elif graeber_active and social_peace > 0.4 and not self.is_bankrupt:
+                        can_buy = True
+                        use_credit = True
+                        quantity = action_chosen
+                else:
+                    quantity = 0
+
+                self.last_state = state
+                self.last_action = action_chosen
             else:
-                quantity = 0
+                if willingness > buy_threshold:
+                    if current_price <= self.budget * 0.4:
+                        can_buy = True
+                    elif graeber_active and social_peace > 0.4 and not self.is_bankrupt:
+                        can_buy = True
+                        use_credit = True
 
-            self.last_state = state
-            self.last_action = action_chosen
-        else:
-            if willingness > buy_threshold:
-                if current_price <= self.budget * 0.4:
-                    can_buy = True
-                elif graeber_active and social_peace > 0.4 and not self.is_bankrupt:
-                    # Can buy on credit if trust is high and not currently bankrupt/defaulted
-                    can_buy = True
-                    use_credit = True
+                if can_buy:
+                    quantity = self._decide_quantity(current_price, willingness)
+                else:
+                    quantity = 0
 
-            if can_buy:
-                quantity = self._decide_quantity(current_price, willingness)
-            else:
-                quantity = 0
+            if can_buy and quantity > 0:
+                action = {
+                    "type": "buy",
+                    "agent_id": self.id,
+                    "tick": tick,
+                    "price": current_price,
+                    "quantity": quantity,
+                    "willingness": round(willingness, 3),
+                    "emotional_state": list(self.emotional_state),
+                    "use_credit": use_credit,
+                    "product_id": prod_id,
+                }
+                actions.append(action)
 
-        if can_buy and quantity > 0:
-            action = {
-                "type": "buy",
-                "agent_id": self.id,
-                "tick": tick,
-                "price": current_price,
-                "quantity": quantity,
-                "willingness": round(willingness, 3),
-                "emotional_state": list(self.emotional_state),
-                "use_credit": use_credit,
-            }
-            actions.append(action)
+            # Update local tracking back to product maps
+            self._update_needs(tick)
+            self.needs_level_by_product[prod_id] = self.needs_level
+            self.last_purchase_price_by_product[prod_id] = self.last_purchase_price
+            self.reference_price_by_product[prod_id] = self.reference_price
 
-        self._update_needs(tick)
-
-        if self.use_rl and hasattr(self, 'last_state'):
-            new_social_pressure = self.emotional_state[3] * avg_neighbor_satisfaction
-            next_state = [current_price, self.budget, self.emotional_state[0], new_social_pressure]
-            debt_penalty = min(1.0, sum(self.debts.values()) / 200.0) if self.debts else 0.0
-            reward = self.emotional_state[0] - debt_penalty
-
-            self.q_learner.update(self.last_state, self.last_action, reward, next_state, [0, 1, 2])
+            if self.use_rl and hasattr(self, 'last_state'):
+                new_social_pressure = self.emotional_state[3] * avg_neighbor_satisfaction
+                next_state = [current_price, self.budget, self.emotional_state[0], new_social_pressure]
+                debt_penalty = min(1.0, sum(self.debts.values()) / 200.0) if self.debts else 0.0
+                reward = self.emotional_state[0] - debt_penalty
+                if self.use_dqn and self.dqn_agent:
+                    self.dqn_agent.store_transition(self.last_state, self.last_action, reward, next_state, False)
+                    self.dqn_agent.update()
+                else:
+                    self.q_learner.update(self.last_state, self.last_action, reward, next_state, [0, 1, 2])
 
         self.record_state(tick)
         return actions
@@ -242,13 +275,21 @@ class ConsumerAgent(BaseEconAgent):
         decay = 0.005 * (1.0 - self.risk_aversion * 0.5)
         self.needs_level = min(1.0, self.needs_level + decay)
 
-    def on_purchase(self, price: float, quantity: int) -> None:
-        self.last_purchase_price = price
-        if self.reference_price == 0:
-            self.reference_price = price
+    def on_purchase(self, price: float, quantity: int, product_id: int = 0) -> None:
+        self.last_purchase_price_by_product[product_id] = price
+        ref_p = self.reference_price_by_product.get(product_id, 0.0)
+        if ref_p == 0:
+            self.reference_price_by_product[product_id] = price
         else:
-            self.reference_price = 0.8 * self.reference_price + 0.2 * price
-        self.needs_level = max(0.0, self.needs_level - 0.1 * quantity)
+            self.reference_price_by_product[product_id] = 0.8 * ref_p + 0.2 * price
+
+        needs_p = self.needs_level_by_product.get(product_id, 0.5)
+        self.needs_level_by_product[product_id] = max(0.0, needs_p - 0.1 * quantity)
+
+        # For backward compatibility with tests/consumers calling without product_id
+        self.last_purchase_price = self.last_purchase_price_by_product[product_id]
+        self.reference_price = self.reference_price_by_product[product_id]
+        self.needs_level = self.needs_level_by_product[product_id]
 
     # Graeberian behavioral methods
 

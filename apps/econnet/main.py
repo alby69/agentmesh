@@ -24,12 +24,14 @@ def main():
     parser.add_argument("--ticks", type=int, default=200, help="Number of simulation ticks (default: 200)")
     parser.add_argument("--consumers", type=int, default=100, help="Number of consumer agents (default: 100)")
     parser.add_argument("--producers", type=int, default=10, help="Number of producer agents (default: 10)")
+    parser.add_argument("--products", type=int, default=1, help="Number of product types (default: 1)")
     parser.add_argument("--budget", type=float, default=100.0, help="Base consumer budget (default: 100)")
     parser.add_argument("--price", type=float, default=10.0, help="Initial market price (default: 10)")
     parser.add_argument("--network", choices=["random", "small-world", "scale-free"], default="small-world", help="Social network topology")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--visualize", action="store_true", help="Generate plots after simulation")
     parser.add_argument("--output", type=str, default=None, help="Output JSON file for tick log")
+    parser.add_argument("--output-db", action="store_true", help="Save the simulation results to SQLite database")
     parser.add_argument("--output-dir", type=str, default="apps/econnet/output", help="Directory for output files (default: apps/econnet/output)")
     parser.add_argument("--verbose", action="store_true", help="Print progress every 50 ticks")
 
@@ -37,6 +39,7 @@ def main():
     parser.add_argument("--graeber", action="store_true", help="Enable Graeberian economics extensions")
     parser.add_argument("--initial-peace", type=float, default=1.0, help="Initial Graeberian social peace/trust level (default: 1.0)")
     parser.add_argument("--tribute-rate", type=float, default=0.05, help="Rate of tribute/charity based on budget (default: 0.05)")
+    parser.add_argument("--use-dqn", action="store_true", help="Enable PyTorch Deep Q-Network for ConsumerAgent")
 
     # Web Dashboard Server Arguments
     parser.add_argument("--server", action="store_true", help="Launch the FastAPI + HTMX interactive web server dashboard")
@@ -58,6 +61,7 @@ def main():
         "graeber": args.graeber,
         "initial_peace": args.initial_peace,
         "tribute_rate": args.tribute_rate,
+        "use_dqn": args.use_dqn,
     }
 
     engine = SimulationEngine(config=config, seed=args.seed)
@@ -67,6 +71,7 @@ def main():
         consumer_budget=args.budget,
         initial_price=args.price,
         network_type=args.network,
+        num_products=args.products,
     )
 
     print(f"\n{'='*60}")
@@ -116,6 +121,41 @@ def main():
         with open(args.output, "w") as f:
             json.dump(tick_log, f, indent=2, ensure_ascii=False)
         print(f"Tick log saved to: {args.output}")
+
+    if args.output_db:
+        from econnet.web.db import EconNetDB
+        import uuid
+        sim_id = f"sim-{uuid.uuid4().hex[:8]}"
+        db = EconNetDB()
+        final_price = summary["market"].get("current_price", 0.0)
+        gini_index = tick_log[-1].get("gini_index", 0.0) if tick_log else 0.0
+        scenario_name = "Graeber Mode" if args.graeber else "Standard ABM"
+
+        # Format transaction list
+        txs_list = []
+        for tick_entry in tick_log:
+            for d_tx in tick_entry.get("transactions_detail", []):
+                txs_list.append({
+                    "tick": tick_entry["tick"],
+                    "buyer_id": d_tx["buyer"],
+                    "seller_id": d_tx["seller"],
+                    "price": d_tx["price"],
+                    "quantity": d_tx["quantity"],
+                    "use_credit": d_tx["credit"]
+                })
+
+        db.save_simulation_run(
+            sim_id=sim_id,
+            scenario=scenario_name,
+            ticks_count=len(tick_log),
+            final_price=final_price,
+            gini_index=gini_index,
+            graeber_active=args.graeber,
+            tick_log=tick_log,
+            agent_states=engine.get_agent_states(),
+            transactions_log=txs_list
+        )
+        print(f"Simulation saved to SQLite DB (ID: {sim_id})")
 
     if args.visualize:
         out_dir = Path(args.output_dir)

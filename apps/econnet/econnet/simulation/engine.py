@@ -1,14 +1,16 @@
 import random
 import logging
+import asyncio
 from typing import Any, Dict, List, Optional
 
 from econnet.agents.consumer import ConsumerAgent
-from econnet.agents.producer import ProducerAgent
+from econnet.agents.producer import ProducerAgent, DemandForecaster
 from econnet.network.social_graph import SocialGraph
 from econnet.simulation.market import Market
 from econnet.simulation.events import (
     EventBus, Event, PriceChangeEvent, TransactionEvent, AgentDecisionEvent, MarketCrashEvent
 )
+from econnet.simulation.product import Product
 
 logger = logging.getLogger("econnet.simulation.engine")
 
@@ -27,6 +29,7 @@ class SimulationEngine:
         self.event_bus = EventBus()
         self.tick_log: List[Dict[str, Any]] = []
         self._running = False
+        self.products: List[Product] = [Product(0, "Base Good", 5.0)]
 
         # Graeberian properties
         self.graeber_active = self.config.get("graeber", False)
@@ -42,6 +45,22 @@ class SimulationEngine:
         self.total_defaults_count = 0
         self.total_defaulted_losses = 0.0
 
+        # Initialize Nostr Event Publisher if enabled
+        from econnet.config import settings
+        self.nostr_publisher = None
+        if settings.nostr_publish or self.config.get("nostr_publish", False):
+            from econnet.relay.publisher import EconNetNostrPublisher
+            self.nostr_publisher = EconNetNostrPublisher(
+                private_key=settings.nostr_private_key,
+                relay_urls=settings.nostr_relay_urls
+            )
+            # Run async connection safely in background loop or separate task
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self.nostr_publisher.connect())
+            except RuntimeError:
+                pass # Not running in an async context
+
     def setup(
         self,
         num_consumers: int = 100,
@@ -50,10 +69,13 @@ class SimulationEngine:
         producer_budget: float = 500.0,
         initial_price: float = 10.0,
         network_type: str = "small-world",
+        num_products: int = 1,
     ) -> None:
         self.graeber_active = self.config.get("graeber", False)
         self.social_peace = self.config.get("initial_peace", 1.0)
         self.tribute_rate = self.config.get("tribute_rate", 0.05)
+
+        self.products = [Product(i, f"Product {i}", 4.0 + i * 2.0) for i in range(num_products)]
 
         self.consumers.clear()
         self.producers.clear()
@@ -70,6 +92,22 @@ class SimulationEngine:
                 price=price,
                 production_rate=self.rng.randint(5, 15),
             )
+            # Pre-populate all generated products
+            for prod in self.products:
+                p_cost = cost + prod.id * 1.5
+                p_price = price + prod.id * 3.0
+                p_stock = stock
+                p_rate = p.production_rate
+                p.stocks_by_product[prod.id] = p_stock
+                p.prices_by_product[prod.id] = p_price
+                p.costs_by_product[prod.id] = p_cost
+                p.production_rates_by_product[prod.id] = p_rate
+                p.predicted_demand_by_product[prod.id] = float(p_rate)
+                p.demand_history_by_product[prod.id] = []
+                p.forecasters_by_product[prod.id] = DemandForecaster()
+
+            p.stock = p.stocks_by_product[0]
+            p.price = p.prices_by_product[0]
             self.producers.append(p)
 
         for i in range(num_consumers):
@@ -80,7 +118,13 @@ class SimulationEngine:
                 social_susceptibility=self.rng.uniform(0.1, 0.9),
                 anchoring=self.rng.uniform(0.1, 0.7),
                 use_rl=self.config.get("use_rl", True),
+                use_dqn=self.config.get("use_dqn", False),
             )
+            # Pre-populate all generated products
+            for prod in self.products:
+                c.needs_level_by_product[prod.id] = self.rng.uniform(0.3, 0.8)
+                c.last_purchase_price_by_product[prod.id] = None
+                c.reference_price_by_product[prod.id] = initial_price + prod.id * 3.0
             self.consumers.append(c)
 
         all_ids = [p.id for p in self.producers] + [c.id for c in self.consumers]
@@ -159,14 +203,21 @@ class SimulationEngine:
         recent_volume = self.market.volume_history[-1] if self.market.volume_history else 0.0
         avg_consumer_emotion = sum(c.emotional_state[0] for c in self.consumers) / max(len(self.consumers), 1)
 
+        product_prices = {}
+        competitor_avg_prices = {}
+        for prod in self.products:
+            matched_prices = [p.prices_by_product.get(prod.id, 10.0) for p in self.producers]
+            product_prices[prod.id] = sum(matched_prices) / max(len(matched_prices), 1)
+            competitor_avg_prices[prod.id] = product_prices[prod.id]
+
         for producer in self.producers:
-            avg_price = sum(p.price for p in self.producers) / max(len(self.producers), 1)
             market_state = {
+                "product_prices": product_prices,
+                "competitor_avg_prices": competitor_avg_prices,
                 "total_demand": sum(
                     1 for c in self.consumers
-                    if c.needs_level > 0.5 and producer.price <= c.budget * 0.4
+                    if any(needs > 0.5 for needs in c.needs_level_by_product.values()) and any(price <= c.budget * 0.4 for price in product_prices.values())
                 ),
-                "competitor_avg_price": avg_price,
                 "recent_volume": recent_volume,
                 "avg_emotion": avg_consumer_emotion,
             }
@@ -178,19 +229,28 @@ class SimulationEngine:
             # Emit PriceChangeEvent and AgentDecisionEvent
             if producer.price != old_price:
                 self.event_bus.emit(PriceChangeEvent(tick, producer.price, old_price, producer.id))
+                if self.nostr_publisher:
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(self.nostr_publisher.publish_price_change(tick, producer.price, old_price, producer.id))
+                    except RuntimeError:
+                        pass
 
             for action in actions:
                 self.event_bus.emit(AgentDecisionEvent(
                     tick, producer.id, "producer", action["type"], action
                 ))
 
-            if producer.stock > 0:
-                self.market.submit_sell(
-                    agent_id=producer.id,
-                    price=producer.price,
-                    quantity=min(producer.stock, 5),
-                    tick=tick,
-                )
+            # Submit sell orders for all active product sell actions
+            for action in actions:
+                if action["type"] == "sell" and action["stock"] > 0:
+                    self.market.submit_sell(
+                        agent_id=producer.id,
+                        price=action["price"],
+                        quantity=min(action["stock"], 5),
+                        tick=tick,
+                        product_id=action.get("product_id", 0)
+                    )
 
         consumer_emotions = {c.id: c.emotional_state[0] for c in self.consumers}
         neighbor_satisfactions = self.social_graph.get_all_neighbor_satisfactions(consumer_emotions)
@@ -198,7 +258,7 @@ class SimulationEngine:
         consumer_actions = []
         for consumer in self.consumers:
             market_state = {
-                "current_price": self.market.get_current_price(),
+                "product_prices": product_prices,
                 "avg_neighbor_satisfaction": neighbor_satisfactions.get(consumer.id, 0.5),
                 "graeber": self.graeber_active,
                 "social_peace": self.social_peace,
@@ -219,6 +279,7 @@ class SimulationEngine:
                         quantity=action["quantity"],
                         tick=tick,
                         use_credit=action.get("use_credit", False),
+                        product_id=action.get("product_id", 0)
                     )
 
         # Match buy/sell orders in the market
@@ -231,20 +292,26 @@ class SimulationEngine:
             if buyer and seller:
                 if tx.use_credit:
                     # Graeber credit transaction: Seller extends credit, buyer incurs debt
-                    debt_amount = seller.sell_on_credit(buyer.id, tx.quantity, tx.price)
+                    debt_amount = seller.sell_on_credit(buyer.id, tx.quantity, tx.price, product_id=tx.product_id)
                     buyer.incur_debt(seller.id, debt_amount)
-                    buyer.on_purchase(tx.price, tx.quantity)
+                    buyer.on_purchase(tx.price, tx.quantity, product_id=tx.product_id)
                     self.total_credit_sales_volume += debt_amount
                 else:
                     # Standard cash transaction
                     buyer.spend(tx.amount)
-                    seller.sell(tx.quantity, tx.price)
-                    buyer.on_purchase(tx.price, tx.quantity)
+                    seller.sell(tx.quantity, tx.price, product_id=tx.product_id)
+                    buyer.on_purchase(tx.price, tx.quantity, product_id=tx.product_id)
 
             # Emit TransactionEvent
             self.event_bus.emit(TransactionEvent(
                 tick, tx.buyer_id, tx.seller_id, tx.price, tx.quantity, tx.amount, tx.use_credit
             ))
+            if self.nostr_publisher:
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(self.nostr_publisher.publish_transaction(tick, tx.buyer_id, tx.seller_id, tx.price, tx.quantity, tx.amount, tx.use_credit))
+                except RuntimeError:
+                    pass
 
         # 4. Debt Servicing / Repayment / Cash Squeeze
         if self.graeber_active:
@@ -267,6 +334,12 @@ class SimulationEngine:
             return_rate = (prices[-1] - prices[-2]) / prices[-2] if prices[-2] != 0 else 0.0
             if return_rate <= -0.05:
                 self.event_bus.emit(MarketCrashEvent(tick, return_rate, prices[-1]))
+                if self.nostr_publisher:
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(self.nostr_publisher.publish_market_crash(tick, return_rate, prices[-1]))
+                    except RuntimeError:
+                        pass
 
         # Graph herd effect and sentiment metrics
         agent_actions = {}
@@ -409,6 +482,10 @@ class SimulationEngine:
             "market": market_stats,
             "events_total": self.event_bus.get_event_count(),
             "transactions_total": self.event_bus.get_event_count("Transaction"),
+            "transactions_detail": [
+                {"buyer": tx.buyer_id, "seller": tx.seller_id, "price": tx.price, "quantity": tx.quantity, "credit": tx.use_credit}
+                for tx in self.market.transactions_history[-1] if self.market.transactions_history
+            ] if hasattr(self.market, "transactions_history") and self.market.transactions_history else [],
         }
         if self.graeber_active:
             summary.update({

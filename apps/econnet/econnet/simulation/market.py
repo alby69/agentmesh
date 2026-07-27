@@ -12,6 +12,7 @@ class Order:
     quantity: int
     tick: int
     use_credit: bool = False  # Supports Graeberian virtual credit orders
+    product_id: int = 0
 
 
 @dataclass
@@ -23,6 +24,7 @@ class Transaction:
     quantity: int
     amount: float
     use_credit: bool = False
+    product_id: int = 0
 
 
 class Market:
@@ -34,13 +36,15 @@ class Market:
         self.volume_history: List[int] = []
         self._order_counter = 0
         self._tick_transactions: List[Transaction] = []
+        self.price_history_by_product: Dict[int, List[float]] = {}
+        self.volume_history_by_product: Dict[int, List[int]] = {}
 
     def reset_tick(self) -> None:
         self._tick_transactions = []
         self.buy_orders.clear()
         self.sell_orders.clear()
 
-    def submit_buy(self, agent_id: int, price: float, quantity: int, tick: int, use_credit: bool = False) -> Order:
+    def submit_buy(self, agent_id: int, price: float, quantity: int, tick: int, use_credit: bool = False, product_id: int = 0) -> Order:
         order = Order(
             order_id=self._next_id(),
             agent_id=agent_id,
@@ -49,11 +53,12 @@ class Market:
             quantity=quantity,
             tick=tick,
             use_credit=use_credit,
+            product_id=product_id
         )
         self.buy_orders.append(order)
         return order
 
-    def submit_sell(self, agent_id: int, price: float, quantity: int, tick: int) -> Order:
+    def submit_sell(self, agent_id: int, price: float, quantity: int, tick: int, product_id: int = 0) -> Order:
         order = Order(
             order_id=self._next_id(),
             agent_id=agent_id,
@@ -61,77 +66,95 @@ class Market:
             price=price,
             quantity=quantity,
             tick=tick,
+            product_id=product_id
         )
         self.sell_orders.append(order)
         return order
 
     def match_orders(self, tick: int) -> List[Transaction]:
-        self.buy_orders.sort(key=lambda o: o.price, reverse=True)
-        self.sell_orders.sort(key=lambda o: o.price)
+        # Group buy and sell orders by product_id
+        buys_by_product: Dict[int, List[Order]] = {}
+        sells_by_product: Dict[int, List[Order]] = {}
 
+        for o in self.buy_orders:
+            buys_by_product.setdefault(o.product_id, []).append(o)
+        for o in self.sell_orders:
+            sells_by_product.setdefault(o.product_id, []).append(o)
+
+        all_product_ids = set(buys_by_product.keys()) | set(sells_by_product.keys())
         matched = []
         remaining_buys = []
         remaining_sells = []
 
-        buy_iter = iter(self.buy_orders)
-        sell_iter = iter(self.sell_orders)
+        for prod_id in all_product_ids:
+            p_buys = buys_by_product.get(prod_id, [])
+            p_sells = sells_by_product.get(prod_id, [])
 
-        buy_order = next(buy_iter, None)
-        sell_order = next(sell_iter, None)
+            p_buys.sort(key=lambda o: o.price, reverse=True)
+            p_sells.sort(key=lambda o: o.price)
 
-        while buy_order is not None and sell_order is not None:
-            if buy_order.price >= sell_order.price:
-                match_qty = min(buy_order.quantity, sell_order.quantity)
-                match_price = (buy_order.price + sell_order.price) / 2
+            buy_iter = iter(p_buys)
+            sell_iter = iter(p_sells)
 
-                tx = Transaction(
-                    tick=tick,
-                    buyer_id=buy_order.agent_id,
-                    seller_id=sell_order.agent_id,
-                    price=round(match_price, 4),
-                    quantity=match_qty,
-                    amount=round(match_price * match_qty, 4),
-                    use_credit=buy_order.use_credit,
-                )
-                matched.append(tx)
-                self.transactions.append(tx)
-                self._tick_transactions.append(tx)
+            buy_order = next(buy_iter, None)
+            sell_order = next(sell_iter, None)
 
-                if buy_order.quantity > match_qty:
-                    buy_order = Order(
-                        order_id=buy_order.order_id,
-                        agent_id=buy_order.agent_id,
-                        side="buy",
-                        price=buy_order.price,
-                        quantity=buy_order.quantity - match_qty,
-                        tick=buy_order.tick,
+            while buy_order is not None and sell_order is not None:
+                if buy_order.price >= sell_order.price:
+                    match_qty = min(buy_order.quantity, sell_order.quantity)
+                    match_price = (buy_order.price + sell_order.price) / 2
+
+                    tx = Transaction(
+                        tick=tick,
+                        buyer_id=buy_order.agent_id,
+                        seller_id=sell_order.agent_id,
+                        price=round(match_price, 4),
+                        quantity=match_qty,
+                        amount=round(match_price * match_qty, 4),
                         use_credit=buy_order.use_credit,
+                        product_id=prod_id,
                     )
-                    sell_order = next(sell_iter, None)
-                elif sell_order.quantity > match_qty:
-                    sell_order = Order(
-                        order_id=sell_order.order_id,
-                        agent_id=sell_order.agent_id,
-                        side="sell",
-                        price=sell_order.price,
-                        quantity=sell_order.quantity - match_qty,
-                        tick=sell_order.tick,
-                    )
-                    buy_order = next(buy_iter, None)
-                else:
-                    buy_order = next(buy_iter, None)
-                    sell_order = next(sell_iter, None)
-            else:
-                break
+                    matched.append(tx)
+                    self.transactions.append(tx)
+                    self._tick_transactions.append(tx)
 
-        if buy_order is not None:
-            remaining_buys.append(buy_order)
-            for o in buy_iter:
-                remaining_buys.append(o)
-        if sell_order is not None:
-            remaining_sells.append(sell_order)
-            for o in sell_iter:
-                remaining_sells.append(o)
+                    if buy_order.quantity > match_qty:
+                        buy_order = Order(
+                            order_id=buy_order.order_id,
+                            agent_id=buy_order.agent_id,
+                            side="buy",
+                            price=buy_order.price,
+                            quantity=buy_order.quantity - match_qty,
+                            tick=buy_order.tick,
+                            use_credit=buy_order.use_credit,
+                            product_id=prod_id,
+                        )
+                        sell_order = next(sell_iter, None)
+                    elif sell_order.quantity > match_qty:
+                        sell_order = Order(
+                            order_id=sell_order.order_id,
+                            agent_id=sell_order.agent_id,
+                            side="sell",
+                            price=sell_order.price,
+                            quantity=sell_order.quantity - match_qty,
+                            tick=sell_order.tick,
+                            product_id=prod_id,
+                        )
+                        buy_order = next(buy_iter, None)
+                    else:
+                        buy_order = next(buy_iter, None)
+                        sell_order = next(sell_iter, None)
+                else:
+                    break
+
+            if buy_order is not None:
+                remaining_buys.append(buy_order)
+                for o in buy_iter:
+                    remaining_buys.append(o)
+            if sell_order is not None:
+                remaining_sells.append(sell_order)
+                for o in sell_iter:
+                    remaining_sells.append(o)
 
         self.buy_orders = remaining_buys
         self.sell_orders = remaining_sells
@@ -153,6 +176,25 @@ class Market:
         current_price = self.get_current_price()
         self.price_history.append(current_price)
         self.volume_history.append(total_volume)
+
+        # Track per-product metrics
+        txs_by_product: Dict[int, List[Transaction]] = {}
+        for tx in self._tick_transactions:
+            txs_by_product.setdefault(tx.product_id, []).append(tx)
+
+        for prod_id in set(list(self.price_history_by_product.keys()) + list(txs_by_product.keys())):
+            prod_txs = txs_by_product.get(prod_id, [])
+            prod_vol = sum(tx.quantity for tx in prod_txs)
+
+            # If transactions occurred, use the last transaction price
+            if prod_txs:
+                prod_price = prod_txs[-1].price
+            else:
+                # Fallback to last tick price or 10.0
+                prod_price = self.price_history_by_product.get(prod_id, [10.0])[-1]
+
+            self.price_history_by_product.setdefault(prod_id, []).append(prod_price)
+            self.volume_history_by_product.setdefault(prod_id, []).append(prod_vol)
 
         return {
             "tick": tick,
