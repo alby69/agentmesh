@@ -38,7 +38,20 @@ def main():
     parser.add_argument("--initial-peace", type=float, default=1.0, help="Initial Graeberian social peace/trust level (default: 1.0)")
     parser.add_argument("--tribute-rate", type=float, default=0.05, help="Rate of tribute/charity based on budget (default: 0.05)")
 
+    # Web Dashboard Server Arguments
+    parser.add_argument("--server", action="store_true", help="Launch the FastAPI + HTMX interactive web server dashboard")
+    parser.add_argument("--port", type=int, default=8000, help="Port to run the web server on (default: 8000)")
+
     args = parser.parse_args()
+
+    if args.server:
+        import uvicorn
+        print("\n" + "="*60)
+        print(f"LAUNCHING ECONNET WEB DASHBOARD")
+        print(f"Address: http://localhost:{args.port}")
+        print("="*60 + "\n")
+        uvicorn.run("econnet.web.app:app", host="0.0.0.0", port=args.port, reload=False)
+        return
 
     # Pass Graeber config to the engine
     config = {

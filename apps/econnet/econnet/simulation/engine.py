@@ -6,7 +6,9 @@ from econnet.agents.consumer import ConsumerAgent
 from econnet.agents.producer import ProducerAgent
 from econnet.network.social_graph import SocialGraph
 from econnet.simulation.market import Market
-from econnet.simulation.events import EventBus, Event
+from econnet.simulation.events import (
+    EventBus, Event, PriceChangeEvent, TransactionEvent, AgentDecisionEvent, MarketCrashEvent
+)
 
 logger = logging.getLogger("econnet.simulation.engine")
 
@@ -53,6 +55,9 @@ class SimulationEngine:
         self.social_peace = self.config.get("initial_peace", 1.0)
         self.tribute_rate = self.config.get("tribute_rate", 0.05)
 
+        self.consumers.clear()
+        self.producers.clear()
+
         for i in range(num_producers):
             cost = self.rng.uniform(3.0, 7.0)
             price = initial_price * self.rng.uniform(0.8, 1.2)
@@ -74,6 +79,7 @@ class SimulationEngine:
                 risk_aversion=self.rng.uniform(0.1, 0.9),
                 social_susceptibility=self.rng.uniform(0.1, 0.9),
                 anchoring=self.rng.uniform(0.1, 0.7),
+                use_rl=self.config.get("use_rl", True),
             )
             self.consumers.append(c)
 
@@ -116,6 +122,20 @@ class SimulationEngine:
         self._running = False
         return self.tick_log
 
+    def _calculate_gini(self) -> float:
+        budgets = [c.budget for c in self.consumers] + [p.budget for p in self.producers]
+        if not budgets:
+            return 0.0
+        sorted_budgets = sorted(budgets)
+        n = len(sorted_budgets)
+        total_sum = sum(sorted_budgets)
+        if n == 0 or total_sum == 0:
+            return 0.0
+        cumulative_sum = 0.0
+        for i, val in enumerate(sorted_budgets):
+            cumulative_sum += (i + 1) * val
+        return (2.0 * cumulative_sum) / (n * total_sum) - (n + 1.0) / n
+
     def _run_tick(self, tick: int) -> Dict[str, Any]:
         self.market.reset_tick()
         self.tick = tick
@@ -136,6 +156,9 @@ class SimulationEngine:
 
         # 3. Normal Market Cycle (Producer pricing and Consumer buying)
         producer_actions = []
+        recent_volume = self.market.volume_history[-1] if self.market.volume_history else 0.0
+        avg_consumer_emotion = sum(c.emotional_state[0] for c in self.consumers) / max(len(self.consumers), 1)
+
         for producer in self.producers:
             avg_price = sum(p.price for p in self.producers) / max(len(self.producers), 1)
             market_state = {
@@ -144,9 +167,22 @@ class SimulationEngine:
                     if c.needs_level > 0.5 and producer.price <= c.budget * 0.4
                 ),
                 "competitor_avg_price": avg_price,
+                "recent_volume": recent_volume,
+                "avg_emotion": avg_consumer_emotion,
             }
+
+            old_price = producer.price
             actions = producer.step(tick, market_state)
             producer_actions.extend(actions)
+
+            # Emit PriceChangeEvent and AgentDecisionEvent
+            if producer.price != old_price:
+                self.event_bus.emit(PriceChangeEvent(tick, producer.price, old_price, producer.id))
+
+            for action in actions:
+                self.event_bus.emit(AgentDecisionEvent(
+                    tick, producer.id, "producer", action["type"], action
+                ))
 
             if producer.stock > 0:
                 self.market.submit_sell(
@@ -169,6 +205,11 @@ class SimulationEngine:
             }
             actions = consumer.step(tick, market_state)
             consumer_actions.extend(actions)
+
+            for action in actions:
+                self.event_bus.emit(AgentDecisionEvent(
+                    tick, consumer.id, "consumer", action["type"], action
+                ))
 
             for action in actions:
                 if action["type"] == "buy" and action["quantity"] > 0:
@@ -200,9 +241,9 @@ class SimulationEngine:
                     seller.sell(tx.quantity, tx.price)
                     buyer.on_purchase(tx.price, tx.quantity)
 
-            self.event_bus.emit(Event(
-                "transaction", tick,
-                {"buyer": tx.buyer_id, "seller": tx.seller_id, "price": tx.price, "quantity": tx.quantity, "credit": tx.use_credit},
+            # Emit TransactionEvent
+            self.event_bus.emit(TransactionEvent(
+                tick, tx.buyer_id, tx.seller_id, tx.price, tx.quantity, tx.amount, tx.use_credit
             ))
 
         # 4. Debt Servicing / Repayment / Cash Squeeze
@@ -220,8 +261,26 @@ class SimulationEngine:
             for tx in transactions
         ]
 
-        avg_emotion = sum(c.emotional_state[0] for c in self.consumers) / max(len(self.consumers), 1)
-        tick_data["avg_consumer_satisfaction"] = round(avg_emotion, 3)
+        # Check and emit MarketCrashEvent
+        prices = self.market.price_history
+        if len(prices) >= 2:
+            return_rate = (prices[-1] - prices[-2]) / prices[-2] if prices[-2] != 0 else 0.0
+            if return_rate <= -0.05:
+                self.event_bus.emit(MarketCrashEvent(tick, return_rate, prices[-1]))
+
+        # Graph herd effect and sentiment metrics
+        agent_actions = {}
+        for c in self.consumers:
+            bought = any(act["agent_id"] == c.id and act["type"] == "buy" for act in consumer_actions)
+            agent_actions[c.id] = "buy" if bought else "none"
+
+        herd_effect_val = self.social_graph.calculate_herd_effect(agent_actions)
+        sentiment_prop_val = self.social_graph.calculate_sentiment_propagation(consumer_emotions)
+
+        tick_data["avg_consumer_satisfaction"] = round(avg_consumer_emotion, 3)
+        tick_data["gini_index"] = round(self._calculate_gini(), 4)
+        tick_data["herd_effect"] = round(herd_effect_val, 4)
+        tick_data["sentiment_propagation"] = round(sentiment_prop_val, 4)
 
         # Graeber metric exports for plotting and analysis
         if self.graeber_active:
@@ -349,7 +408,7 @@ class SimulationEngine:
             "avg_clustering": round(self.social_graph.avg_clustering(), 4),
             "market": market_stats,
             "events_total": self.event_bus.get_event_count(),
-            "transactions_total": self.event_bus.get_event_count("transaction"),
+            "transactions_total": self.event_bus.get_event_count("Transaction"),
         }
         if self.graeber_active:
             summary.update({

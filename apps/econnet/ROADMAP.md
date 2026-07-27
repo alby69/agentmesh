@@ -39,44 +39,44 @@ Definizione delle fondamenta del simulatore: package, classi base, configurazion
 
 ---
 
-## Fase 2: Rete Sociale e Mercato ⬜ IN CORSO
+## Fase 2: Rete Sociale e Mercato ✅ COMPLETATA
 
 Implementazione della topologia di rete e del meccanismo di mercato.
 
-### 2.1 Social Graph ⬜
-- [ ] Grafo NetworkX con agenti come nodi
-- [ ] Archi pesati per forza di influenza
-- [ ] Generazione topologie: random, small-world, scale-free
-- [ ] Evoluzione dinamica della rete (creazione/rottura archi)
-- [ ] Misura diffusione informazione e effetto gregge
+### 2.1 Social Graph ✅
+- [x] Grafo NetworkX con agenti come nodi
+- [x] Archi pesati per forza di influenza
+- [x] Generazione topologie: random, small-world, scale-free
+- [x] Evoluzione dinamica della rete (creazione/rottura archi)
+- [x] Misura diffusione informazione e effetto gregge
 
-### 2.2 Market (Order Book) ⬜
-- [ ] Order book decentralizzato
-- [ ] Ordini di acquisto/vendita con prezzo desiderato
-- [ ] Matching bilaterale domanda-offerta
-- [ ] Prezzo emergente (nessun equilibrio imposto)
-- [ ] Storico transazioni per ogni tick
+### 2.2 Market (Order Book) ✅
+- [x] Order book decentralizzato
+- [x] Ordini di acquisto/vendita con prezzo desiderato
+- [x] Matching bilaterale domanda-offerta
+- [x] Prezzo emergente (nessun equilibrio imposto)
+- [x] Storico transazioni per ogni tick
 
-### 2.3 Event System ⬜
-- [ ] Classi evento: `PriceChange`, `Transaction`, `AgentDecision`, `MarketCrash`
-- [ ] Event bus per logging e callback
-- [ ] Registro eventi per analisi post-simulazione
+### 2.3 Event System ✅
+- [x] Classi evento: `PriceChange`, `Transaction`, `AgentDecision`, `MarketCrash`
+- [x] Event bus per logging e callback
+- [x] Registro eventi per analisi post-simulazione
 
 ---
 
-## Fase 3: Motore di Simulazione ⬜
+## Fase 3: Motore di Simulazione ✅ COMPLETATA
 
 Il cuore del sistema: orchestrare agenti, mercato e rete tick dopo tick.
 
-### 3.1 SimulationEngine ⬜
-- [ ] Loop tick-by-tick con conteggio tempo
-- [ ] Ordine di esecuzione: producer → market → consumer → network
-- [ ] Pause/resume simulazione
-- [ ] Seed randomico per riproducibilità
-- [ ] Logging strutturato per ogni tick
+### 3.1 SimulationEngine ✅
+- [x] Loop tick-by-tick con conteggio tempo
+- [x] Ordine di esecuzione: producer → market → consumer → network
+- [x] Pause/resume simulazione
+- [x] Seed randomico per riproducibilità
+- [x] Logging strutturato per ogni tick
 
-### 3.2 Ciclo di Simulazione ⬜
-- [ ] **Tick N**:
+### 3.2 Ciclo di Simulazione ✅
+- [x] **Tick N**:
   1. Ogni Producer aggiorna scorte e prezzo (pricing dinamico)
   2. Il Market processa ordini in sospeso
   3. Ogni Consumer valuta acquisto (stato emotivo + prezzo + rete)
@@ -84,71 +84,71 @@ Il cuore del sistema: orchestrare agenti, mercato e rete tick dopo tick.
   5. La Social Graph propaga influenza
   6. I modelli predittivi dei Producer si aggiornano con nuovi dati
 
-### 3.3 Fenomeni Emergenti ⬜
-- [ ] Bolle speculative (prezzo sale senza fondamento)
-- [ ] Crash improvvisi (cascata di vendite)
-- [ ] Effetto gregge (acquisti simultanei)
-- [ ] Stagflazione (prezzo alto + bassa domanda)
-- [ ] Mercati laterali (stabilità temporanea)
+### 3.3 Fenomeni Emergenti ✅
+- [x] Bolle speculative (prezzo sale senza fondamento)
+- [x] Crash improvvisi (cascata di vendite)
+- [x] Effetto gregge (acquisti simultanei)
+- [x] Stagflazione (prezzo alto + bassa domanda)
+- [x] Mercati laterali (stabilità temporanea)
 
 ---
 
-## Fase 4: AI e Machine Learning ⬜
+## Fase 4: AI e Machine Learning ✅ COMPLETATA
 
 Integrazione dei modelli di apprendimento negli agenti.
 
-### 4.1 Modello Predittivo Produttore ⬜
-- [ ] Rete neurale semplice (PyTorch) per forecasting domanda
-- [ ] Input: storico prezzi, volume transazioni, stato emotivo medio
-- [ ] Output: domanda prevista per prossimo tick
-- [ ] Training online (aggiornamento continua dopo ogni tick)
+### 4.1 Modello Predittivo Produttore ✅
+- [x] Rete neurale semplice (PyTorch) per forecasting domanda
+- [x] Input: storico prezzi, volume transazioni, stato emotivo medio
+- [x] Output: domanda prevista per prossimo tick
+- [x] Training online (aggiornamento continuo dopo ogni tick)
 
-### 4.2 Reinforcement Learning Consumatore ⬜
-- [ ] Stato: [prezzo, budget, soddisfazione, pressione sociale]
-- [ ] Azioni: acquista / non acquista / compra di più
-- [ ] Ricompensa: soddisfazione post-acquisto
-- [ ] Algoritmo: Q-learning semplice o policy gradient
+### 4.2 Reinforcement Learning Consumatore ✅
+- [x] Stato: [prezzo, budget, soddisfazione, pressione sociale]
+- [x] Azioni: acquista / non acquista / compra di più
+- [x] Ricompensa: soddisfazione post-acquisto
+- [x] Algoritmo: Q-learning semplice o policy gradient
 
-### 4.3 Riflessività ⬜
-- [ ] Quando il modello predittivo cambia, i produttori cambiano prezzo
-- [ ] Il cambio prezzo modifica il comportamento dei consumatori
-- [ ] Il cambiamento dei consumatori invalida la previsione
-- [ ] Ciclo continuo: testare cosa succede quando la previsione crea la realtà
+### 4.3 Riflessività ✅
+- [x] Quando il modello predittivo cambia, i produttori cambiano prezzo
+- [x] Il cambio prezzo modifica il comportamento dei consumatori
+- [x] Il cambiamento dei consumatori invalida la previsione
+- [x] Ciclo continuo: testare cosa succede quando la previsione crea la realtà
 
-### 4.4 Confronto Modelli ⬜
-- [ ] Eseguire simulazione con agenti puramente razionali
-- [ ] Eseguire simulazione con agenti ABM+AI
-- [ ] Confrontare: crash predetti, stabilità, distribuzione ricchezza
-- [ ] Report differenze
+### 4.4 Confronto Modelli ✅
+- [x] Eseguire simulazione con agenti puramente razionali
+- [x] Eseguire simulazione con agenti ABM+AI
+- [x] Confrontare: crash predetti, stabilità, distribuzione ricchezza
+- [x] Report differenze
 
 ---
 
-## Fase 5: Visualizzazione e Analisi ⬜
+## Fase 5: Visualizzazione e Analisi ✅ COMPLETATA
 
 Visualizzare i risultati e analizzare i fenomeni emergenti.
 
-### 5.1 Dashboard Grafici ⬜
-- [ ] Andamento prezzo nel tempo (line chart)
-- [ ] Volume transazioni per tick (bar chart)
-- [ ] Distribuzione budget agenti (istogramma)
-- [ ] Stato emotivo medio consumatori (line chart multi-asse)
-- [ ] Rete sociale con colori per stato (grafo)
+### 5.1 Dashboard Grafici ✅
+- [x] Andamento prezzo nel tempo (line chart)
+- [x] Volume transazioni per tick (bar chart)
+- [x] Distribuzione budget agenti (istogramma)
+- [x] Stato emotivo medio consumatori (line chart multi-asse)
+- [x] Rete sociale con colori per stato (grafo)
 
-### 5.2 Indicatori ⬜
-- [ ] Indice di volatilità
-- [ ] Indice di disuguaglianza (Gini coefficient)
-- [ ] Indice di efficienza del mercato
-- [ ] Indice di coesione sociale
+### 5.2 Indicatori ✅
+- [x] Indice di volatilità
+- [x] Indice di disuguaglianza (Gini coefficient)
+- [x] Indice di efficienza del mercato
+- [x] Indice di coesione sociale
 
-### 5.3 Scenario Manager ⬜
-- [ ] Configurare scenari predefiniti: "Bolla 2008", "Crisi pandemia", "Boom tecnologico"
-- [ ] Confronto parallelo scenari
-- [ ] Export risultati in CSV/JSON
+### 5.3 Scenario Manager ✅
+- [x] Configurare scenari predefiniti: "Bolla 2008", "Crisi pandemia", "Boom tecnologico"
+- [x] Confronto parallelo scenari
+- [x] Export risultati in CSV/JSON
 
-### 5.4 Web UI (opzionale) ⬜
-- [ ] Dashboard FastAPI + HTMX per lanciare simulazioni
-- [ ] Grafici interattivi con Plotly
-- [ ] Stato simulazione in tempo reale
+### 5.4 Web UI ✅
+- [x] Dashboard FastAPI + HTMX per lanciare simulazioni
+- [x] Grafici interattivi con Plotly
+- [x] Stato simulazione in tempo reale
 
 ---
 
@@ -175,7 +175,7 @@ Quando un modello predittivo viene reso pubblico e usato dagli agenti, il sistem
 
 | Componente | Tecnologia |
 |------------|-----------|
-| Agenti | Python classi + euristiche |
+| Agenti | Python classi + euristiche + Q-learning |
 | Rete sociale | NetworkX (graph) |
 | Mercato | Order book custom |
 | ML | PyTorch (rette neurali) o scikit-learn |
