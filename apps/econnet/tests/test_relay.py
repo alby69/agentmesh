@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from econnet.relay.publisher import EconNetNostrPublisher
-from econnet.simulation.engine import SimulationEngine
 
 @pytest.mark.asyncio
 async def test_nostr_publisher_publishing():

@@ -1,5 +1,4 @@
 import pytest
-import os
 from econnet.web.db import EconNetDB
 
 @pytest.fixture

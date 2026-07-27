@@ -1,6 +1,4 @@
-import pytest
 from econnet.simulation.engine import SimulationEngine
-from econnet.simulation.product import Product
 
 def test_multi_good_setup_and_matching():
     engine = SimulationEngine(seed=42)

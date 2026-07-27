@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import sys
 import os
 # Ensure the econnet root directory is in sys.path so nested modules can be imported
