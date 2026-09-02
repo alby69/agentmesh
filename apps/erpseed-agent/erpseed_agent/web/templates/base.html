@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ERPSeed Builder Agent{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+    <nav class="bg-indigo-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <a href="/" class="text-xl font-bold tracking-wide flex items-center gap-2">
+                    <span class="bg-indigo-600 text-white px-2 py-1 rounded text-sm">ERP</span>
+                    ERPSeed Agent
+                </a>
+                <div class="flex items-center gap-4 text-sm font-medium">
+                    <a href="/" class="hover:text-indigo-200">Dashboard</a>
+                    <a href="/tenants" class="hover:text-indigo-200">Tenants</a>
+                    <a href="/capabilities" class="hover:text-indigo-200">Capabilities</a>
+                    <a href="/logs" class="hover:text-indigo-200">Logs</a>
+                </div>
+            </div>
+            <div class="text-xs bg-indigo-800 px-3 py-1 rounded-full text-indigo-200">
+                v{{ config.agent_version }}
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

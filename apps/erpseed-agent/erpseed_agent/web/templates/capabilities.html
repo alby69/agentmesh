@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}ERPSeed Agent — Capabilities{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Synchronized Capabilities</h1>
+            <p class="text-slate-600 text-sm mt-1">CQRS commands and dynamic models exposed to the AgentMesh network.</p>
+        </div>
+        <div>
+            <button hx-post="/capabilities/sync" hx-swap="none" onclick="alert('Capability sync requested!')" class="bg-indigo-600 text-white font-medium text-sm px-4 py-2 rounded hover:bg-indigo-700 transition">
+                Sync Capabilities
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6 border border-slate-200">
+        {% if capabilities %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for cap in capabilities %}
+            <div class="p-4 border border-slate-200 rounded-lg bg-slate-50">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-mono text-sm font-bold text-indigo-700">{{ cap.name }}</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded">{{ cap.category or 'erp' }}</span>
+                </div>
+                <p class="text-xs text-slate-600 mb-3">{{ cap.description or 'No description provided.' }}</p>
+                {% if cap.input_schema %}
+                <details class="text-xs">
+                    <summary class="cursor-pointer text-slate-500 font-medium hover:text-slate-700">Input Schema</summary>
+                    <pre class="bg-slate-900 text-slate-200 p-2 rounded text-[11px] mt-2 overflow-x-auto">{{ cap.input_schema | tojson(indent=2) }}</pre>
+                </details>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-slate-500 text-sm italic">No capabilities currently cached. Ensure ERPSEED backend is reachable and click "Sync Capabilities".</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
