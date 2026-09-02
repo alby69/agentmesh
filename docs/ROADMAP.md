@@ -77,6 +77,25 @@ Transitioned from monolithic architecture to a P2P Multi-Agent mesh.
 
 ---
 
+## v3.7 — Enterprise Mesh & ERP Domain (Completed)
+
+### erpseed-agent Integration
+- [x] **Sovereign ERPSeedAgent**: Decentralized ERP integration subclassing `NostrAgent` with capability manifest sync.
+- [x] **Domain Sub-agents**: Modular sub-agents for Sales, Purchases, Inventory, Accounting, HR, Manufacturing, CRM, Fattura Elettronica, Workflow, and AI Builder.
+- [x] **Vault Bridge**: Content-addressed document storage on IPFS via `ERPSeedVaultBridge` (`agentmesh-vault`).
+- [x] **FatturaPA 1.2 Compliance**: XML invoice synthesis and SDI gateway submit hooks.
+- [x] **Dynamic Low-Code SysModel Engine**: NL-to-schema synthesis (`agentmesh-llm`) and dynamic CRUD endpoints (`data.<model>.<crud>`).
+- [x] **Operator Web UI**: FastAPI + Jinja2 + HTMX operator dashboard supporting `/builder`, `/modules`, `/invoices`, `/workflows`, `/mesh`, `/vault`.
+
+### agentmesh-pro Platform
+- [x] **Production API Layer**: Async FastAPI REST endpoints with strict Pydantic schema validation.
+- [x] **Persistence & RAG Storage**: PostgreSQL + PGVector long-term memory persistence and Redis session caching.
+- [x] **LangGraph State Orchestration**: Stateful graph execution with human-in-the-loop approval nodes.
+- [x] **Multi-LLM Gateway & Observability**: LiteLLM unified gateway with fallback routing and Langfuse tracing.
+- [x] **Pi Coding Agent**: Continuous development integration, automated unit testing, and self-healing code automation.
+
+---
+
 ## v4.0 — Decentralized Native Platform
 
 ### Milestone 1: Advanced Identity & Discovery
