@@ -1,6 +1,6 @@
 # erpseed-agent
 
-DESCRIPTION_PLACEHOLDER
+ERPSeed Builder Agent for AgentMesh — Enterprise Resource Planning operations, fiscal compliance, and dynamic low-code ERP integration.
 
 ## Quick Start
 
@@ -26,13 +26,19 @@ apps/erpseed-agent/
 │   ├── __init__.py
 │   ├── config.py                        # Pydantic Settings (env vars)
 │   ├── agents/
-│   │   └── __init__.py
+│   │   ├── erp_agent.py                 # ERPSeedAgent (BaseAgent)
+│   │   └── policy_agent.py              # ERPSeedPolicyAgent
+│   ├── bridge/
+│   │   ├── executor.py                  # ERPSeedBridge HTTP REST client
+│   │   ├── tenant_resolver.py           # npub -> tenant_id mapping
+│   │   ├── capability_sync.py           # /api/v1/ai/capabilities manifest sync
+│   │   └── event_publisher.py           # ERPSEED domain event bridge
 │   └── web/
-│       ├── __init__.py
 │       ├── app.py                       # FastAPI server + routes
 │       ├── db.py                        # SQLite database layer
 │       └── templates/                   # Jinja2 + Tailwind + HTMX
 └── tests/
     ├── conftest.py                      # Shared fixtures
+    ├── test_erp_agent.py                # Agent & bridge tests
     └── test_web.py                      # Web route tests
 ```

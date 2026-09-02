@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Set, Optional
+from typing import Set, Optional
 from agentmesh.core import AgentMessage
 from erpseed_agent.agents.erp_agent import ERPSeedAgent
 

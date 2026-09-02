@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from erpseed_agent.web.db import get_tenant_mapping, set_tenant_mapping
 
 
