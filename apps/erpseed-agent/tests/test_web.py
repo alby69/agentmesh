@@ -17,7 +17,7 @@ def client_fixture():
 def test_index_route(client: TestClient):
     response = client.get("/")
     assert response.status_code == 200
-    assert "ERPSeed Builder" in response.text
+    assert "ERPSeed Agent" in response.text
     assert "Dashboard" in response.text
 
 
@@ -27,6 +27,51 @@ def test_health_route(client: TestClient):
     data = response.json()
     assert "status" in data
     assert data["agent_id"] == "erpseed-builder-agent"
+
+
+def test_builder_routes(client: TestClient):
+    res = client.get("/builder")
+    assert res.status_code == 200
+    assert "AI Low-Code Builder Interface" in res.text
+
+    res_post = client.post(
+        "/builder/generate",
+        data={"type": "model", "model_name": "client_order", "description": "Client order tracking model"},
+    )
+    assert res_post.status_code == 200
+    assert "client_order" in res_post.text
+
+
+def test_modules_route(client: TestClient):
+    res = client.get("/modules")
+    assert res.status_code == 200
+    assert "ERPSEED Modules" in res.text
+    assert "sales" in res.text
+    assert "fattura_elettronica" in res.text
+
+
+def test_invoices_route(client: TestClient):
+    res = client.get("/invoices")
+    assert res.status_code == 200
+    assert "Electronic Invoices" in res.text
+
+
+def test_workflows_route(client: TestClient):
+    res = client.get("/workflows")
+    assert res.status_code == 200
+    assert "Workflows" in res.text
+
+
+def test_mesh_route(client: TestClient):
+    res = client.get("/mesh")
+    assert res.status_code == 200
+    assert "Nostr A2A Mesh Network" in res.text
+
+
+def test_vault_route(client: TestClient):
+    res = client.get("/vault")
+    assert res.status_code == 200
+    assert "IPFS Vault Storage" in res.text
 
 
 def test_tenants_routes(client: TestClient):

@@ -1,4 +1,4 @@
-"""SQLite database layer for erpseed-agent."""
+"""SQLite database layer for erpseed-agent with invoice, workflow, and vault persistent storage."""
 
 from __future__ import annotations
 
@@ -55,6 +55,35 @@ def init_db() -> None:
                 status TEXT,
                 details TEXT DEFAULT '',
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_number TEXT UNIQUE,
+                ipfs_cid TEXT,
+                ipfs_url TEXT,
+                xml_content TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS workflows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE,
+                trigger_event TEXT,
+                action TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS vault_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                ipfs_cid TEXT UNIQUE,
+                file_type TEXT DEFAULT 'document',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
@@ -153,5 +182,74 @@ def list_agent_logs(limit: int = 50) -> List[Dict[str, Any]]:
         rows = conn.execute(
             "SELECT id, message_id, sender, action, status, details, timestamp FROM agent_logs ORDER BY id DESC LIMIT ?",
             (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def save_invoice(invoice_number: str, ipfs_cid: str, ipfs_url: str, xml_content: str = "") -> None:
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO invoices (invoice_number, ipfs_cid, ipfs_url, xml_content)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(invoice_number) DO UPDATE SET
+                ipfs_cid = excluded.ipfs_cid,
+                ipfs_url = excluded.ipfs_url,
+                xml_content = excluded.xml_content
+            """,
+            (invoice_number, ipfs_cid, ipfs_url, xml_content),
+        )
+
+
+def list_invoices(limit: int = 50) -> List[Dict[str, Any]]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, invoice_number, ipfs_cid, ipfs_url, created_at FROM invoices ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def save_workflow(name: str, trigger_event: str, action: str, status: str = "active") -> None:
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO workflows (name, trigger_event, action, status)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(name) DO UPDATE SET
+                trigger_event = excluded.trigger_event,
+                action = excluded.action,
+                status = excluded.status
+            """,
+            (name, trigger_event, action, status),
+        )
+
+
+def list_workflows() -> List[Dict[str, Any]]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, name, trigger_event, action, status, created_at FROM workflows ORDER BY id DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def save_vault_file(title: str, ipfs_cid: str, file_type: str = "document") -> None:
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO vault_files (title, ipfs_cid, file_type)
+            VALUES (?, ?, ?)
+            ON CONFLICT(ipfs_cid) DO UPDATE SET
+                title = excluded.title,
+                file_type = excluded.file_type
+            """,
+            (title, ipfs_cid, file_type),
+        )
+
+
+def list_vault_files() -> List[Dict[str, Any]]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, title, ipfs_cid, file_type, created_at FROM vault_files ORDER BY id DESC"
         ).fetchall()
         return [dict(r) for r in rows]

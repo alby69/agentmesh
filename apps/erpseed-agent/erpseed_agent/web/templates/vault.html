@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}IPFS Vault Manager - ERPSeed Agent{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">IPFS Vault Storage</h1>
+            <p class="text-slate-600">Content-addressable storage for ERP documents, invoices, and reports</p>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow border border-slate-200">
+        <h2 class="text-lg font-semibold mb-4 text-indigo-900">Upload Document to Vault</h2>
+        <form action="/vault/upload" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Document Title</label>
+                <input type="text" name="title" placeholder="e.g. Sales Report Q3" class="mt-1 block w-full rounded border-slate-300 p-2 border" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700">File</label>
+                <input type="file" name="file" class="mt-1 block w-full text-sm text-slate-500 border border-slate-300 rounded p-1" required>
+            </div>
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 text-sm font-medium">Upload to IPFS</button>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-lg shadow border border-slate-200 overflow-hidden">
+        <table class="w-full text-left border-collapse text-sm">
+            <thead>
+                <tr class="bg-slate-100 text-slate-700">
+                    <th class="p-3 font-semibold">ID</th>
+                    <th class="p-3 font-semibold">Title</th>
+                    <th class="p-3 font-semibold">Type</th>
+                    <th class="p-3 font-semibold">IPFS CID</th>
+                    <th class="p-3 font-semibold">Created At</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+                {% for f in vault_files %}
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3">{{ f.id }}</td>
+                    <td class="p-3 font-medium text-indigo-900">{{ f.title }}</td>
+                    <td class="p-3 font-mono text-xs">{{ f.file_type }}</td>
+                    <td class="p-3 font-mono text-xs text-slate-600">
+                        <a href="{{ config.ipfs_gateway_url }}{{ f.ipfs_cid }}" target="_blank" class="text-indigo-600 hover:underline">{{ f.ipfs_cid }}</a>
+                    </td>
+                    <td class="p-3 text-xs text-slate-500">{{ f.created_at }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="p-4 text-center text-slate-500">No documents stored in IPFS Vault yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

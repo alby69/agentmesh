@@ -8,6 +8,7 @@ try:
     from nostr_sdk import (
         Client,
         Keys,
+        PublicKey,
         EventBuilder,
         Tag,
         Event,
@@ -21,6 +22,7 @@ try:
 except ImportError:
     Client = None
     Keys = None
+    PublicKey = None
     EventBuilder = None
     Tag = None
     Event = object
@@ -98,8 +100,14 @@ class NostrAgent(BaseAgent):
         pubkey = self.keys.public_key().to_hex()
         # Filter for Agent Messages (Kind 29001) addressed to this agent (p-tag)
         # Also listen for broadcast messages (no p-tag, handled by client logic)
-        msg_filter = Filter().kind(Kind(KIND_AGENT_MESSAGE)).pubkey(pubkey)
-        await self.client.subscribe([msg_filter])
+        if PublicKey is not None:
+            msg_filter = Filter().kind(Kind(KIND_AGENT_MESSAGE)).pubkey(self.keys.public_key())
+        else:
+            msg_filter = Filter().kind(Kind(KIND_AGENT_MESSAGE)).pubkey(pubkey)
+        try:
+            await self.client.subscribe(msg_filter)
+        except Exception:
+            await self.client.subscribe([msg_filter])
 
         self.logger.info(f"Subscribed to AgentMessages for {pubkey}")
 
@@ -149,9 +157,16 @@ class NostrAgent(BaseAgent):
         if not self.client:
             return
 
-        event = EventBuilder(Kind(kind), content, tags or []).to_event(self.keys)
-        event_id = await self.client.send_event(event)
-        return event_id
+        try:
+            builder = EventBuilder(Kind(kind), content)
+            if tags:
+                builder = builder.tags(tags)
+            event = builder.to_event(self.keys)
+            event_id = await self.client.send_event(event)
+            return event_id
+        except Exception as e:
+            self.logger.warning(f"Failed to publish Nostr event (kind={kind}): {e}")
+            return None
 
     async def publish_capability(self, capability: AgentCapability):
         """Publishes agent capabilities to the registry."""
