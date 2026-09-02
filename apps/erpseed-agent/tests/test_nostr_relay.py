@@ -1,5 +1,4 @@
 import pytest
-from agentmesh.core import AgentMessage
 from erpseed_agent.config import ERPSeedConfig
 from erpseed_agent.bridge.nostr_relay import NostrRelayBridge
 from agentmesh.relay import NostrAgent

@@ -3,15 +3,9 @@ from agentmesh.core import AgentMessage
 from erpseed_agent.config import ERPSeedConfig
 from erpseed_agent.agents.erp_agent import ERPSeedAgent
 from erpseed_agent.agents.sales_agent import SalesAgent
-from erpseed_agent.agents.purchase_agent import PurchaseAgent
 from erpseed_agent.agents.inventory_agent import InventoryAgent
-from erpseed_agent.agents.accounting_agent import AccountingAgent
 from erpseed_agent.agents.hr_agent import HRAgent
-from erpseed_agent.agents.manufacturing_agent import ManufacturingAgent
-from erpseed_agent.agents.crm_agent import CRMAgent
 from erpseed_agent.agents.fe_agent import FEAgent
-from erpseed_agent.agents.workflow_agent import WorkflowAgent
-from erpseed_agent.agents.ai_builder_agent import AIBuilderAgent
 
 
 class MockBridge:

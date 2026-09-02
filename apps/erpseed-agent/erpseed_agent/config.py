@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 from agentmesh.core.base import MeshConfig
