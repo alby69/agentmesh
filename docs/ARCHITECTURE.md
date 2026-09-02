@@ -57,10 +57,14 @@ Where logic resides.
 - **Task Agent (v3.0.3)**: High-level orchestrator.
 - **Workflow Agent (v3.5)**: Complex sequence manager.
 - **Project Agent (v4.0)**: Goal-oriented autonomous project representative.
+- **ERPSeedAgent (v3.7)**: Sovereign ERP integration with domain sub-agents (Sales, Purchases, Inventory, Accounting, HR, Manufacturing, CRM, FatturaPA 1.2 XML, AI Builder).
+- **AgentMesh Pro Execution Nodes (v3.7)**: Enterprise execution agents with LangGraph state graphs, LiteLLM multi-provider fallback, and Pi Coding Agent automation.
 
 ## 6. Infrastructure & Tooling
 Helper libraries and shared infrastructure components.
 - **AgentMesh LLM**: Unified provider interface for Gemini, OpenAI, Anthropic, and Ollama.
+- **AgentMesh Vault**: IPFS content-addressable storage and document bridge (`ERPSeedVaultBridge`).
+- **AgentMesh Relay**: Nostr P2P event transport and A2A communication bus (`NostrAgent`).
 - **Mesh Config**: Specialized, decoupled configuration management for apps and agents.
 
 ## 7. Application Structure

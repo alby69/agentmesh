@@ -9,6 +9,9 @@
 ## Protocols & Security
 
 - **[A2A_PROTOCOL.md](A2A_PROTOCOL.md)** — Formal specification for Agent-to-Agent communication.
+- **[A2A_PROTOCOL_ERP.md](A2A_PROTOCOL_ERP.md)** — Interoperability protocol extension for ERP & business workflow operations.
+- **[ERPSEED_AGENT.md](ERPSEED_AGENT.md)** — Sovereign ERPSeedAgent architecture, sub-agents, and IPFS bridge.
+- **[CAPABILITIES.md](CAPABILITIES.md)** — Comprehensive agent capability matrix across applications.
 - **[SECURITY.md](SECURITY.md)** — Threat model and security best practices.
 - **[AGENTSTR_INTEGRATION.md](AGENTSTR_INTEGRATION.md)** — MCP and `agentstr-sdk` integration.
 
@@ -26,6 +29,8 @@
 - **[podcast-generator](../apps/podcast-generator/README.md)** — Newsletter → Italian podcast pipeline.
 - **[econnet](../apps/econnet/README.md)** — ABM economic simulator.
 - **[motedico](../apps/motedico/README.md)** — Decentralized project collaboration mesh.
+- **[erpseed-agent](../apps/erpseed-agent/README.md)** — Sovereign ERPSeed low-code & enterprise agent.
+- **[agentmesh-pro](../apps/agentmesh-pro/README.md)** — Enterprise production AI agent execution system.
 
 ## Reference
 

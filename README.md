@@ -33,7 +33,9 @@ agentmesh/
 │   ├── newsletter-filter/     # Cognitive newsletter filtering + web UI
 │   ├── podcast-generator/     # Newsletter → Italian podcast pipeline
 │   ├── econnet/               # ABM economic simulator
-│   └── motedico/              # Decentralized project collaboration mesh
+│   ├── motedico/              # Decentralized project collaboration mesh
+│   ├── erpseed-agent/         # Sovereign ERPSeed low-code & enterprise agent
+│   └── agentmesh-pro/         # Enterprise production AI agent execution system
 ├── scripts/
 │   └── new-app.sh             # Scaffolding tool for new apps
 ├── docs/                      # Technical documentation
@@ -56,6 +58,8 @@ PYTHONPATH=apps/newsletter-filter uv run python apps/newsletter-filter/main.py -
 PYTHONPATH=apps/podcast-generator uv run python apps/podcast-generator/main.py daily
 PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 200 --visualize
 PYTHONPATH=apps/motedico uv run python apps/motedico/main.py --server
+PYTHONPATH=apps/erpseed-agent uv run python apps/erpseed-agent/main.py --server --port 8000
+uv run --package agentmesh-pro python apps/agentmesh-pro/main.py --server --port 8000
 ```
 
 ---
@@ -100,8 +104,10 @@ apps/{app-name}/
 |-----|-------------|-----|-----|
 | **newsletter-filter** | Cognitive newsletter filtering — extracts and scores relevant articles from RSS/IMAP | FastAPI + HTMX | `--server`, `--daemon`, `--source-type` |
 | **podcast-generator** | Newsletter → Italian podcast pipeline (TTS, multi-LLM, Nostr + IPFS) | FastAPI + OAuth | `daily`, `weekly`, `fetch-all`, `server` |
-| **econnet** | ABM economic simulator with RL consumers and emergent market dynamics | — | `--ticks`, `--consumers`, `--visualize` |
+| **econnet** | ABM economic simulator with RL consumers, Graeberian modes, and emergent market dynamics | FastAPI + HTMX | `--ticks`, `--consumers`, `--visualize`, `--graeber`, `--server` |
 | **motedico** | Decentralized project collaboration and advisory mesh | FastAPI + HTMX | `--server` |
+| **erpseed-agent** | Sovereign ERPSeed low-code & enterprise agent (domain sub-agents, IPFS Vault, FatturaPA XML, dynamic SysModel CRUD) | FastAPI + HTMX | `--server`, `--port` |
+| **agentmesh-pro** | Enterprise production AI agent execution system (PostgreSQL/PGVector, LangGraph, LiteLLM, Langfuse, Pi Coding Agent) | FastAPI REST | `--server`, `--port` |
 
 ---
 
