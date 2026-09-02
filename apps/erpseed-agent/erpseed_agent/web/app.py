@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
+import tempfile
 from pathlib import Path
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Request, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
@@ -20,6 +21,12 @@ from erpseed_agent.web.db import (
     delete_tenant_mapping,
     list_cached_capabilities,
     list_agent_logs,
+    list_invoices,
+    save_invoice,
+    list_workflows,
+    save_workflow,
+    list_vault_files,
+    save_vault_file,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,6 +74,138 @@ async def index(request: Request) -> HTMLResponse:
             "logs": logs,
         },
     )
+
+
+@app.get("/builder", response_class=HTMLResponse)
+async def builder_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "builder.html",
+        {
+            "config": _settings,
+            "last_result": None,
+        },
+    )
+
+
+@app.post("/builder/generate", response_class=HTMLResponse)
+async def generate_builder_item(
+    request: Request,
+    type: str = Form(...),
+    model_name: str = Form(""),
+    description: str = Form(""),
+    view_type: str = Form("list"),
+):
+    result = {}
+    if _agent:
+        if type == "model":
+            result = await _agent.ai_builder_agent.generate_model(description=description, model_name=model_name)
+        elif type == "view":
+            result = await _agent.ai_builder_agent.generate_view(model_name=model_name, view_type=view_type)
+
+    return templates.TemplateResponse(
+        request,
+        "builder.html",
+        {
+            "config": _settings,
+            "last_result": result,
+        },
+    )
+
+
+@app.get("/modules", response_class=HTMLResponse)
+async def modules_page(request: Request) -> HTMLResponse:
+    modules = [
+        {"name": "sales", "description": "Quotes, Sales Orders, Customer Invoicing"},
+        {"name": "purchases", "description": "Supplier Orders, Goods Receipts, Supplier Invoicing"},
+        {"name": "inventory", "description": "Stock Movements, Warehouse Locations, Lot Tracking"},
+        {"name": "accounting", "description": "Prima Nota Ledger, VAT Liquidation, Accounts Payable/Receivable"},
+        {"name": "hr", "description": "Employee Records, Attendance Logging, Payroll Summaries"},
+        {"name": "manufacturing", "description": "Bill of Materials (BOM), Production Orders (ODP), MRP"},
+        {"name": "crm", "description": "Lead Generation, Sales Opportunities, Contracts"},
+        {"name": "fattura_elettronica", "description": "FatturaPA 1.2 XML Generation & IPFS Archiving"},
+        {"name": "workflow", "description": "Trigger-Action Automation & Webhooks"},
+        {"name": "builder", "description": "Low-Code AI Model, View, and Workflow Generator"},
+    ]
+    return templates.TemplateResponse(
+        request,
+        "modules.html",
+        {
+            "config": _settings,
+            "modules": modules,
+        },
+    )
+
+
+@app.get("/invoices", response_class=HTMLResponse)
+async def invoices_page(request: Request) -> HTMLResponse:
+    invoices = list_invoices()
+    return templates.TemplateResponse(
+        request,
+        "invoices.html",
+        {
+            "config": _settings,
+            "invoices": invoices,
+        },
+    )
+
+
+@app.get("/workflows", response_class=HTMLResponse)
+async def workflows_page(request: Request) -> HTMLResponse:
+    workflows = list_workflows()
+    return templates.TemplateResponse(
+        request,
+        "workflows.html",
+        {
+            "config": _settings,
+            "workflows": workflows,
+        },
+    )
+
+
+@app.get("/mesh", response_class=HTMLResponse)
+async def mesh_page(request: Request) -> HTMLResponse:
+    public_key = _agent.keys.public_key().to_bech32() if _agent and hasattr(_agent, "keys") else "npub..."
+    return templates.TemplateResponse(
+        request,
+        "mesh.html",
+        {
+            "config": _settings,
+            "public_key": public_key,
+        },
+    )
+
+
+@app.get("/vault", response_class=HTMLResponse)
+async def vault_page(request: Request) -> HTMLResponse:
+    vault_files = list_vault_files()
+    return templates.TemplateResponse(
+        request,
+        "vault.html",
+        {
+            "config": _settings,
+            "vault_files": vault_files,
+        },
+    )
+
+
+@app.post("/vault/upload")
+async def upload_vault_file(title: str = Form(...), file: UploadFile = File(...)):
+    if _agent and file:
+        content = await file.read()
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(content)
+            tmp_path = Path(tmp.name)
+
+        try:
+            cid = await _agent.vault_bridge.vault_agent.upload_file(tmp_path)
+            if cid:
+                save_vault_file(title=title, ipfs_cid=cid, file_type=file.content_type or "document")
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
+
+    return RedirectResponse(url="/vault", status_code=303)
 
 
 @app.get("/tenants", response_class=HTMLResponse)

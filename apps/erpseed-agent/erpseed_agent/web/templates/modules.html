@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}ERPSEED Modules - ERPSeed Agent{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">ERPSEED Modules & Sync Status</h1>
+            <p class="text-slate-600">Active ERPSEED modules synced to AgentMesh capabilities</p>
+        </div>
+        <form action="/capabilities/sync" method="POST">
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 text-sm font-medium">Sync Capabilities</button>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {% for mod in modules %}
+        <div class="bg-white p-5 rounded-lg shadow border border-slate-200">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-indigo-900 capitalize">{{ mod.name }}</span>
+                <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded font-medium">Active</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">{{ mod.description }}</p>
+            <div class="text-xs text-slate-600 space-y-1">
+                <div>Capability Prefix: <code class="bg-slate-100 px-1 py-0.5 rounded">erp.{{ mod.name }}</code></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

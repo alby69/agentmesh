@@ -58,6 +58,7 @@ class CapabilitySync:
                 manifest = data.get("manifest", [])
                 for agent_entry in manifest:
                     category = agent_entry.get("agent", "erp")
+                    # Process standard capabilities
                     for cap in agent_entry.get("capabilities", []):
                         cap_name = cap.get("name", "")
                         cap_desc = cap.get("description", "")
@@ -84,6 +85,36 @@ class CapabilitySync:
                                 "input_schema": input_schema,
                             }
                         )
+
+                    # Process dynamic low-code SysModels -> Dynamic CRUD capabilities
+                    models = agent_entry.get("models", agent_entry.get("sys_models", []))
+                    for model_item in models:
+                        model_name = model_item.get("name") if isinstance(model_item, dict) else str(model_item)
+                        for crud_op in ["list", "create", "get", "update", "delete"]:
+                            dyn_name = f"data.{model_name}.{crud_op}"
+                            dyn_desc = f"Dynamic low-code model CRUD {crud_op} for entity '{model_name}'"
+                            agent_cap = AgentCapability(
+                                agent_id=self.agent_id,
+                                name=dyn_name,
+                                description=dyn_desc,
+                                version="1.0.0",
+                                public_key=self.public_key,
+                                capabilities=[dyn_name],
+                                metadata={
+                                    "category": "dynamic_api",
+                                    "model": model_name,
+                                    "operation": crud_op,
+                                },
+                            )
+                            capabilities.append(agent_cap)
+                            raw_capabilities.append(
+                                {
+                                    "name": dyn_name,
+                                    "description": dyn_desc,
+                                    "category": "dynamic_api",
+                                    "input_schema": {"model": model_name, "operation": crud_op},
+                                }
+                            )
 
                 # Persist in SQLite capability cache
                 if raw_capabilities:

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Electronic Invoices - ERPSeed Agent{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">FatturaPA Electronic Invoices</h1>
+            <p class="text-slate-600">Generated XML invoices stored on IPFS Vault</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow border border-slate-200 overflow-hidden">
+        <table class="w-full text-left border-collapse text-sm">
+            <thead>
+                <tr class="bg-slate-100 text-slate-700">
+                    <th class="p-3 font-semibold">ID</th>
+                    <th class="p-3 font-semibold">Invoice Number</th>
+                    <th class="p-3 font-semibold">IPFS CID</th>
+                    <th class="p-3 font-semibold">IPFS Gateway Link</th>
+                    <th class="p-3 font-semibold">Created At</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+                {% for inv in invoices %}
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3">{{ inv.id }}</td>
+                    <td class="p-3 font-medium text-indigo-900">{{ inv.invoice_number }}</td>
+                    <td class="p-3 font-mono text-xs text-slate-600">{{ inv.ipfs_cid }}</td>
+                    <td class="p-3">
+                        <a href="{{ inv.ipfs_url }}" target="_blank" class="text-indigo-600 hover:underline text-xs">View on Gateway</a>
+                    </td>
+                    <td class="p-3 text-xs text-slate-500">{{ inv.created_at }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="p-4 text-center text-slate-500">No invoices generated yet. Use FEAgent or task actions to generate invoices.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

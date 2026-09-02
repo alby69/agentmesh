@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Nostr Mesh Network - ERPSeed Agent{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">Nostr A2A Mesh Network</h1>
+            <p class="text-slate-600">P2P identity, active relay connections, and Nostr capability publishing</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow border border-slate-200 space-y-4">
+            <h2 class="text-lg font-semibold text-indigo-900">Agent Mesh Identity</h2>
+            <div class="text-sm space-y-2">
+                <div><span class="font-medium text-slate-700">Agent ID:</span> <code class="bg-slate-100 px-2 py-0.5 rounded">{{ config.agent_id }}</code></div>
+                <div><span class="font-medium text-slate-700">Public Key (npub):</span> <code class="bg-slate-100 px-2 py-0.5 rounded text-xs break-all">{{ public_key }}</code></div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow border border-slate-200 space-y-4">
+            <h2 class="text-lg font-semibold text-indigo-900">Connected Relays</h2>
+            <ul class="space-y-2 text-sm">
+                {% for relay in config.nostr_relays %}
+                <li class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <span class="font-mono text-xs">{{ relay }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}AI Builder - ERPSeed Agent{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900">AI Low-Code Builder Interface</h1>
+            <p class="text-slate-600">Generate SysModels, Views, and Workflows using natural language and agentmesh-llm</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow border border-slate-200">
+            <h2 class="text-lg font-semibold mb-4 text-indigo-900">Generate Model Schema</h2>
+            <form action="/builder/generate" method="POST" class="space-y-4">
+                <input type="hidden" name="type" value="model">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Model Name (snake_case)</label>
+                    <input type="text" name="model_name" placeholder="e.g. project_task" class="mt-1 block w-full rounded border-slate-300 p-2 border">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Description</label>
+                    <textarea name="description" rows="3" placeholder="Describe the entity fields and requirements..." class="mt-1 block w-full rounded border-slate-300 p-2 border" required></textarea>
+                </div>
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 font-medium">Generate Model</button>
+            </form>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow border border-slate-200">
+            <h2 class="text-lg font-semibold mb-4 text-indigo-900">Generate UI View Layout</h2>
+            <form action="/builder/generate" method="POST" class="space-y-4">
+                <input type="hidden" name="type" value="view">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Target Model Name</label>
+                    <input type="text" name="model_name" placeholder="e.g. project_task" class="mt-1 block w-full rounded border-slate-300 p-2 border" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">View Type</label>
+                    <select name="view_type" class="mt-1 block w-full rounded border-slate-300 p-2 border">
+                        <option value="list">List View</option>
+                        <option value="form">Form View</option>
+                        <option value="kanban">Kanban Board</option>
+                    </select>
+                </div>
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 font-medium">Generate View</button>
+            </form>
+        </div>
+    </div>
+
+    {% if last_result %}
+    <div class="bg-slate-900 text-green-400 p-4 rounded-lg shadow font-mono text-sm overflow-x-auto">
+        <h3 class="text-white font-bold mb-2">AI Generation Result:</h3>
+        <pre>{{ last_result }}</pre>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
