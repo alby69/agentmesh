@@ -3,12 +3,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from agentmesh_pro.config import settings
 from agentmesh_pro.schemas import (
     AgentQueryRequest,
     AgentQueryResponse,
-    HealthCheckResponse,
-    HumanApprovalDecision,
 )
 from agentmesh_pro.persistence import CacheManager, MemoryStore
 from agentmesh_pro.gateway import ModelGateway

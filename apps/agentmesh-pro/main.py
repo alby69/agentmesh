@@ -1,7 +1,6 @@
 """FastAPI Web API Service and CLI entry point for AgentMesh Pro."""
 
 import argparse
-import sys
 import uvicorn
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware

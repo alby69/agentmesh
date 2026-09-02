@@ -3,7 +3,6 @@
 import time
 import logging
 from typing import Any, Dict, List, Optional, TypedDict
-from pydantic import BaseModel
 
 from agentmesh_pro.gateway import gateway
 from agentmesh_pro.persistence import cache_manager, memory_store
