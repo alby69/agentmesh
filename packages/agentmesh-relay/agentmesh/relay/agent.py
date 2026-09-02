@@ -134,7 +134,7 @@ class NostrAgent(BaseAgent):
     async def _process_incoming_event(self, event: Event):
         """Processes a received Nostr event and converts it to an AgentMessage."""
         event_kind = event.kind()
-        if event_kind == Kind(KIND_AGENT_MESSAGE) or event_kind == KIND_AGENT_MESSAGE:
+        if (Kind is not None and event_kind == Kind(KIND_AGENT_MESSAGE)) or event_kind == KIND_AGENT_MESSAGE:
             # Check if event has author (handle mocks)
             try:
                 author = event.author()

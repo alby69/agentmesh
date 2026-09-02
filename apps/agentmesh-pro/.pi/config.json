@@ -1,0 +1,10 @@
+{
+  "project_name": "agentmesh-pro",
+  "version": "0.1.0",
+  "role": "supervisor",
+  "automation": {
+    "auto_generate_tests": true,
+    "self_healing": true,
+    "test_runner": "pytest"
+  }
+}
