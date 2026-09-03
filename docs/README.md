@@ -21,6 +21,7 @@
 - **[agentmesh-llm](../packages/agentmesh-llm/README.md)** — Unified LLM provider interface.
 - **[agentmesh-relay](../packages/agentmesh-relay/README.md)** — Nostr P2P communication.
 - **[agentmesh-vault](../packages/agentmesh-vault/README.md)** — IPFS distributed storage.
+- **[agentmesh-pro](../packages/agentmesh-pro/README.md)** — Enterprise multi-agent execution framework.
 - **[agentmesh-studio](../packages/agentmesh-studio/README.md)** — CLI tools.
 
 ## Applications
@@ -30,7 +31,7 @@
 - **[econnet](../apps/econnet/README.md)** — ABM economic simulator.
 - **[motedico](../apps/motedico/README.md)** — Decentralized project collaboration mesh.
 - **[erpseed-agent](../apps/erpseed-agent/README.md)** — Sovereign ERPSeed low-code & enterprise agent.
-- **[agentmesh-pro](../apps/agentmesh-pro/README.md)** — Enterprise production AI agent execution system.
+- **[agentmesh-pro-server](../apps/agentmesh-pro-server/README.md)** — Enterprise production AI agent REST API server.
 
 ## Reference
 
