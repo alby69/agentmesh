@@ -1,4 +1,4 @@
-"""FastAPI Web API Service and CLI entry point for AgentMesh Pro."""
+"""FastAPI Web API Service and CLI entry point for AgentMesh Pro Server."""
 
 import argparse
 import uvicorn
@@ -19,7 +19,7 @@ from agentmesh_pro.gateway import gateway
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
-    description="Enterprise Multi-Agent Mesh System with LangGraph, PGVector, Redis, and LiteLLM",
+    description="Enterprise Multi-Agent Mesh System REST API Server powered by agentmesh-pro",
 )
 
 app.add_middleware(
@@ -104,7 +104,7 @@ async def submit_human_approval(decision: HumanApprovalDecision):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AgentMesh Pro - Enterprise Production AI Agent System")
+    parser = argparse.ArgumentParser(description="AgentMesh Pro Server - Enterprise Production AI Agent System")
     parser.add_argument("--server", action="store_true", help="Start FastAPI web server")
     parser.add_argument("--host", type=str, default=settings.host, help="Host address to bind")
     parser.add_argument("--port", type=int, default=settings.port, help="Port to bind")
@@ -114,7 +114,7 @@ def main():
         print(f"Starting {settings.app_name} on {args.host}:{args.port}")
         uvicorn.run("main:app", host=args.host, port=args.port, reload=settings.debug)
     else:
-        print(f"{settings.app_name} v{settings.version}")
+        print(f"{settings.app_name} Server v{settings.version}")
         print("Use --server to start the API server.")
 
 

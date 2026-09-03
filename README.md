@@ -28,6 +28,7 @@ agentmesh/
 │   ├── agentmesh-llm/         # LLM providers (Gemini, OpenAI, Anthropic, Ollama)
 │   ├── agentmesh-relay/       # Nostr P2P communication layer
 │   ├── agentmesh-vault/       # IPFS content-addressable storage
+│   ├── agentmesh-pro/         # Enterprise multi-agent execution framework
 │   └── agentmesh-studio/      # CLI tools (agentmesh info/vision)
 ├── apps/                      # Applications
 │   ├── newsletter-filter/     # Cognitive newsletter filtering + web UI
@@ -35,7 +36,7 @@ agentmesh/
 │   ├── econnet/               # ABM economic simulator
 │   ├── motedico/              # Decentralized project collaboration mesh
 │   ├── erpseed-agent/         # Sovereign ERPSeed low-code & enterprise agent
-│   └── agentmesh-pro/         # Enterprise production AI agent execution system
+│   └── agentmesh-pro-server/  # Enterprise production AI agent REST API server
 ├── scripts/
 │   └── new-app.sh             # Scaffolding tool for new apps
 ├── docs/                      # Technical documentation
@@ -59,7 +60,7 @@ PYTHONPATH=apps/podcast-generator uv run python apps/podcast-generator/main.py d
 PYTHONPATH=apps/econnet uv run python apps/econnet/main.py --ticks 200 --visualize
 PYTHONPATH=apps/motedico uv run python apps/motedico/main.py --server
 PYTHONPATH=apps/erpseed-agent uv run python apps/erpseed-agent/main.py --server --port 8000
-uv run --package agentmesh-pro python apps/agentmesh-pro/main.py --server --port 8000
+uv run --package agentmesh-pro-server python apps/agentmesh-pro-server/main.py --server --port 8000
 ```
 
 ---
@@ -107,7 +108,7 @@ apps/{app-name}/
 | **econnet** | ABM economic simulator with RL consumers, Graeberian modes, and emergent market dynamics | FastAPI + HTMX | `--ticks`, `--consumers`, `--visualize`, `--graeber`, `--server` |
 | **motedico** | Decentralized project collaboration and advisory mesh | FastAPI + HTMX | `--server` |
 | **erpseed-agent** | Sovereign ERPSeed low-code & enterprise agent (domain sub-agents, IPFS Vault, FatturaPA XML, dynamic SysModel CRUD) | FastAPI + HTMX | `--server`, `--port` |
-| **agentmesh-pro** | Enterprise production AI agent execution system (PostgreSQL/PGVector, LangGraph, LiteLLM, Langfuse, Pi Coding Agent) | FastAPI REST | `--server`, `--port` |
+| **agentmesh-pro-server** | Enterprise production AI agent REST API server | FastAPI REST | `--server`, `--port` |
 
 ---
 
@@ -119,6 +120,7 @@ apps/{app-name}/
 | **agentmesh-llm** | Unified LLM interface with factory pattern (Gemini, OpenAI, Anthropic, Ollama) |
 | **agentmesh-relay** | Nostr protocol integration — `NostrAgent` with event publishing, listening, A2A |
 | **agentmesh-vault** | IPFS content-addressable storage — `VaultAgent` with mock and real providers |
+| **agentmesh-pro** | Enterprise multi-agent execution framework (`MeshOrchestrator`, `ModelGateway`, PGVector/Redis persistence) |
 | **agentmesh-studio** | CLI tools (`agentmesh info`, `agentmesh vision`) |
 
 ---
@@ -129,7 +131,9 @@ apps/{app-name}/
 # Run lint
 uv run ruff check apps/ packages/
 
-# Run tests for all apps
+# Run tests for all apps and packages
+uv run pytest packages/agentmesh-pro/tests -v
+uv run pytest apps/agentmesh-pro-server/tests -v
 uv run pytest apps/newsletter-filter/tests -v
 uv run pytest apps/podcast-generator/tests -v
 uv run pytest apps/econnet/tests -v

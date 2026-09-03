@@ -58,13 +58,15 @@ Where logic resides.
 - **Workflow Agent (v3.5)**: Complex sequence manager.
 - **Project Agent (v4.0)**: Goal-oriented autonomous project representative.
 - **ERPSeedAgent (v3.7)**: Sovereign ERP integration with domain sub-agents (Sales, Purchases, Inventory, Accounting, HR, Manufacturing, CRM, FatturaPA 1.2 XML, AI Builder).
-- **AgentMesh Pro Execution Nodes (v3.7)**: Enterprise execution agents with LangGraph state graphs, LiteLLM multi-provider fallback, and Pi Coding Agent automation.
+- **AgentMesh Pro Execution Framework (v3.7 / v4.0)**: Enterprise execution agents with LangGraph state graphs, LiteLLM multi-provider fallback, PGVector memory, Redis caching, and Langfuse tracing (`packages/agentmesh-pro`).
 
 ## 6. Infrastructure & Tooling
 Helper libraries and shared infrastructure components.
+- **AgentMesh Core**: Foundational agent model, logging, and metrics.
 - **AgentMesh LLM**: Unified provider interface for Gemini, OpenAI, Anthropic, and Ollama.
 - **AgentMesh Vault**: IPFS content-addressable storage and document bridge (`ERPSeedVaultBridge`).
 - **AgentMesh Relay**: Nostr P2P event transport and A2A communication bus (`NostrAgent`).
+- **AgentMesh Pro**: Production-grade execution framework (`MeshOrchestrator`, `ModelGateway`, `MemoryStore`, `CacheManager`).
 - **Mesh Config**: Specialized, decoupled configuration management for apps and agents.
 
 ## 7. Application Structure
@@ -99,6 +101,7 @@ apps/{app-name}/
 - **Tests**: `pytest` + `unittest.mock`, `TestClient` for web, temp DB in `tmp_path`
 - **Nostr integration**: Via `agentmesh-relay` (`NostrAgent` base class)
 - **LLM integration**: Via `agentmesh-llm` (`LLMProviderFactory`)
+- **Pro execution**: Via `agentmesh-pro` (`MeshOrchestrator`, `ModelGateway`)
 
 ---
 

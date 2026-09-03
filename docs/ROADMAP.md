@@ -87,31 +87,150 @@ Transitioned from monolithic architecture to a P2P Multi-Agent mesh.
 - [x] **Dynamic Low-Code SysModel Engine**: NL-to-schema synthesis (`agentmesh-llm`) and dynamic CRUD endpoints (`data.<model>.<crud>`).
 - [x] **Operator Web UI**: FastAPI + Jinja2 + HTMX operator dashboard supporting `/builder`, `/modules`, `/invoices`, `/workflows`, `/mesh`, `/vault`.
 
-### agentmesh-pro Platform
-- [x] **Production API Layer**: Async FastAPI REST endpoints with strict Pydantic schema validation.
-- [x] **Persistence & RAG Storage**: PostgreSQL + PGVector long-term memory persistence and Redis session caching.
-- [x] **LangGraph State Orchestration**: Stateful graph execution with human-in-the-loop approval nodes.
-- [x] **Multi-LLM Gateway & Observability**: LiteLLM unified gateway with fallback routing and Langfuse tracing.
-- [x] **Pi Coding Agent**: Continuous development integration, automated unit testing, and self-healing code automation.
+### agentmesh-pro Framework Extraction & Server Refactor
+- [x] **Framework Extraction**: Extracted execution primitives (LangGraph orchestrator, LiteLLM gateway, PGVector/Redis persistence, Langfuse tracer, Pydantic schemas) into reusable `packages/agentmesh-pro`.
+- [x] **Server Shell**: Created lightweight `apps/agentmesh-pro-server` FastAPI application consuming `agentmesh-pro`.
 
 ---
 
 ## v4.0 — Decentralized Native Platform
 
 ### Milestone 1: Advanced Identity & Discovery
-- [ ] **Identity Agent**: Sovereign identity management (NIP-05, NIP-32), key rotation and recovery.
-- [ ] **Federated Search Agent**: Distributed discovery across Nostr, IPFS, and local caches.
-- [ ] **Capability Crawler**: Background agent indexing the mesh.
+
+Goal: Move from basic NIP-01 keypairs to a full sovereign identity layer with automated mesh discovery.
+
+#### Epic: Identity Agent (`packages/agentmesh-identity`)
+- **Description**: Sovereign identity management beyond raw Nostr keys.
+- **Acceptance Criteria**:
+  - [ ] `IdentityAgent` class extending `BaseAgent` with NIP-05 (DNS-based identifier) support.
+  - [ ] NIP-32 (Labeling) integration for agent capability tagging.
+  - [ ] Key rotation protocol: publish `KeyRotationEvent` (custom kind) and peer auto-update trust store.
+  - [ ] Key recovery via Shamir's Secret Sharing (SSS): M-of-N shard reconstruction.
+  - [ ] Identity revocation: publish revocation event to Nostr relays, cached by peers.
+- **Dependencies**: `agentmesh-core`, `agentmesh-relay`, `nostr-sdk`
+- **Estimated Complexity**: High
+- **Target Version**: v4.0.0-alpha
+
+#### Epic: Federated Search Agent
+- **Description**: Distributed search across Nostr events, IPFS CIDs, and local agent caches without a central index.
+- **Acceptance Criteria**:
+  - [ ] `FederatedSearchAgent` that broadcasts `SearchQuery` events to the mesh.
+  - [ ] Peers respond with `SearchResult` events containing relevance scores.
+  - [ ] Result aggregation with deduplication (by CID/event-id).
+  - [ ] Local cache indexing using `sqlite-fts5` for fast local lookup.
+  - [ ] Fallback to Nostr relay search if mesh peers are offline.
+- **Dependencies**: `agentmesh-core`, `agentmesh-relay`, `agentmesh-vault`
+- **Estimated Complexity**: Medium
+- **Target Version**: v4.0.0-beta
+
+#### Epic: Capability Crawler
+- **Description**: Background agent that continuously indexes the mesh for available services.
+- **Acceptance Criteria**:
+  - [ ] Subscribes to `AgentCapability` events (Kind 30311) on all configured relays.
+  - [ ] Maintains a local SQLite cache of `agent_id -> capabilities -> last_seen`.
+  - [ ] Expires stale entries after configurable TTL (default 24h).
+  - [ ] Exposes `crawler.find_agents(capability="text-generation")` API.
+  - [ ] Periodic re-broadcast of crawler's own capability index.
+- **Dependencies**: `agentmesh-core`, `agentmesh-relay`
+- **Estimated Complexity**: Low
+- **Target Version**: v4.0.0-alpha
+
+---
 
 ### Milestone 2: Agentic Marketplace
-- [ ] **Marketplace Agent**: Automated matching and bidding for agent services.
-- [ ] **Reputation Oracle**: Web-of-Trust signal aggregation.
-- [ ] **Service Level Agreements (SLAs)**: Smart-contract-like task guarantees.
+
+Goal: Enable agents to offer, discover, and pay for services autonomously.
+
+#### Epic: Marketplace Agent (`packages/agentmesh-marketplace`)
+- **Description**: Decentralized service marketplace where agents publish offers and bids.
+- **Acceptance Criteria**:
+  - [ ] `ServiceOffer` Pydantic model: `{service_type, price_msat, sla, agent_pubkey, expires_at}`.
+  - [ ] `ServiceBid` model: `{task_description, max_price_msat, deadline, requester_pubkey}`.
+  - [ ] Nostr event kinds: `Kind 31001` (Offer), `Kind 31002` (Bid), `Kind 31003` (Contract).
+  - [ ] Matching engine: automatic pairing of bids and offers based on price, capability, and reputation.
+  - [ ] Contract negotiation: 3-way handshake (Offer -> Bid -> Accept -> Execute).
+- **Dependencies**: `agentmesh-core`, `agentmesh-relay`, `agentmesh-identity`
+- **Estimated Complexity**: High
+- **Target Version**: v4.1.0
+
+#### Epic: Reputation Oracle
+- **Description**: Web-of-Trust based reputation system to prevent Sybil attacks in the marketplace.
+- **Acceptance Criteria**:
+  - [ ] `ReputationOracle` class computing PageRank-like scores over the mesh trust graph.
+  - [ ] Agents publish `TrustVote` events (+1 / -1) for peers they've interacted with.
+  - [ ] Weighted aggregation: votes from high-reputation agents count more.
+  - [ ] API: `oracle.get_score(agent_pubkey) -> float`.
+  - [ ] Integration with `MarketplaceAgent`: reject offers from agents with score < threshold.
+- **Dependencies**: `agentmesh-core`, `agentmesh-relay`, `agentmesh-identity`
+- **Estimated Complexity**: High
+- **Target Version**: v4.1.0
+
+#### Epic: Micropayments Layer
+- **Description**: Lightning Network and Cashu ecash integration for agent-to-agent payments.
+- **Acceptance Criteria**:
+  - [ ] `PaymentAgent` supporting Lightning invoices (BOLT11) via `lndgrpc` or `cln-grpc`.
+  - [ ] Cashu token minting and redemption for offline-capable payments.
+  - [ ] `EscrowAgent`: holds payments in 2-of-2 multisig until task completion is verified.
+  - [ ] Auto-payment on successful task delivery (triggered by marketplace contract).
+  - [ ] Payment receipts stored on IPFS via `agentmesh-vault` for audit trail.
+- **Dependencies**: `agentmesh-core`, `agentmesh-vault`, `agentmesh-relay`
+- **Estimated Complexity**: Very High
+- **Target Version**: v4.2.0
+
+---
 
 ### Milestone 3: Infrastructure & UX
-- [ ] **MCP Native Hub**: Full Model Context Protocol integration.
-- [ ] **Mesh Dashboard**: Real-time P2P network visualization.
-- [ ] **Mobile Node**: Lightweight agent runtime for mobile devices.
+
+Goal: Make the mesh accessible to non-technical users and compatible with industry standards.
+
+#### Epic: MCP Native Hub
+- **Description**: Full Model Context Protocol (MCP) integration, making AgentMesh an MCP server and client.
+- **Acceptance Criteria**:
+  - [ ] `MCPHubAgent` implementing the MCP server spec (stdio and SSE transports).
+  - [ ] Expose mesh capabilities as MCP tools: `query_agent`, `store_memory`, `send_message`.
+  - [ ] MCP client mode: AgentMesh agents can call external MCP servers.
+  - [ ] Tool discovery: auto-register Nostr agent capabilities as MCP tools.
+  - [ ] Authentication: Nostr NIP-44 encrypted MCP sessions.
+- **Dependencies**: `agentmesh-core`, `agentmesh-pro` (orchestrator), `mcp` SDK
+- **Estimated Complexity**: High
+- **Target Version**: v4.0.0
+
+#### Epic: Mesh Dashboard
+- **Description**: Real-time web visualization of the P2P mesh network.
+- **Acceptance Criteria**:
+  - [ ] WebSocket endpoint streaming mesh events (agent joins, message flows, capability updates).
+  - [ ] D3.js / Cytoscape.js force-directed graph showing agents as nodes, trust relationships as edges.
+  - [ ] Live metrics: message throughput, agent uptime, reputation scores, payment volume.
+  - [ ] Filterable views: by capability, by reputation tier, by geographic relay.
+  - [ ] Mobile-responsive design using Tailwind + HTMX.
+- **Dependencies**: `agentmesh-core`, `agentmesh-relay`, `agentmesh-studio`
+- **Estimated Complexity**: Medium
+- **Target Version**: v4.0.0
+
+#### Epic: Mobile Node
+- **Description**: Lightweight agent runtime for Android/iOS capable of joining the mesh.
+- **Acceptance Criteria**:
+  - [ ] Python runtime packaged with `BeeWare` or `Kivy` for cross-platform mobile.
+  - [ ] Reduced feature set: only `BaseAgent`, `NostrAgent`, and `VaultAgent`.
+  - [ ] Background Nostr relay connection with push notification bridge.
+  - [ ] Battery-optimized: batch event processing, adaptive sync intervals.
+  - [ ] QR-code based onboarding: scan to import Nostr nsec and join default relays.
+- **Dependencies**: `agentmesh-core`, `agentmesh-relay`, `agentmesh-vault`
+- **Estimated Complexity**: Very High
+- **Target Version**: v4.3.0
+
+---
+
+### v4.0 Release Timeline
+
+| Version | Milestone | Target Date | Key Deliverables |
+|---|---|---|---|
+| v4.0.0-alpha | Identity & Discovery | Q4 2026 | `agentmesh-identity`, Capability Crawler, Federated Search |
+| v4.0.0-beta | MCP & Dashboard | Q1 2027 | MCP Hub, Mesh Dashboard WebUI |
+| v4.0.0 | Stable v4.0 | Q1 2027 | All alpha+beta features stable, docs complete |
+| v4.1.0 | Marketplace Core | Q2 2027 | Marketplace Agent, Reputation Oracle |
+| v4.2.0 | Payments | Q3 2027 | Lightning + Cashu integration, EscrowAgent |
+| v4.3.0 | Mobile | Q4 2027 | Mobile Node MVP |
 
 ---
 
